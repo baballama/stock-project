@@ -16,6 +16,7 @@ Week 5/31-6/6
     -used yfinance to pull real stock data, 
     -streamlit to launch the web app, 
     -added basic functions: input box for tickers that retrieves stock data using yfinance and displays the most recent rows of data
+    -fixed up the README and progress log
 
 
 
