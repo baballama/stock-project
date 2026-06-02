@@ -14,17 +14,17 @@ stock = yf.Ticker(ticker)
 
 data = stock.history(period=period)
 
-st.subheader(f"{ticker} ticker data")
+st.subheader(f"{ticker.upper} ticker data")
 
 st.write(data.tail(10))
 
-st.subheader(f"{ticker} Closing Price Chart")
+st.subheader(f"{ticker.upper} Closing Price Chart")
 
 chart = px.line(
     data,
     x=data.index,
     y="Close",
-    title=f"{ticker} Closing Price Over time"
+    title=f"{ticker.upper} Closing Price Over time"
 )
 
 st.plotly_chart(chart)
