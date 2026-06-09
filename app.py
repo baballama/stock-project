@@ -8,11 +8,14 @@ st.write("Search for stock tickers:")
 
 ticker = st.text_input("Enter a stock ticker:", "INTC")
 
-period = st.text_input("Enter a time frame (e.g. 1y, 1mo, 1d):", "1y")
+pd = st.selectbox(
+    "Choose a time period:",
+    ["1d","5d", "1mo", "3mo", "6mo", "1y", "5y"]
+)
 
 stock = yf.Ticker(ticker)
 
-data = stock.history(period=period)
+data = stock.history(period=pd)
 
 st.subheader(f"{ticker.upper()} ticker data")
 

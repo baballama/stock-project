@@ -17,6 +17,16 @@ Week 5/31-6/6
     -streamlit to launch the web app, 
     -added basic functions: input box for tickers that retrieves stock data using yfinance and displays the most recent rows of data
     -fixed up the README and progress log
+    -used plotly to create closing price chart
+    -added timeframe input
+    -deployed app using streamlit
+`   *6/2-6/8
+    -break from the project focusing on drivers ed course
+Week 6/7-6/13
+    *6/9
+    -changed the time period selector to a drop down menu to support later changes
+    -learned about candlestick patterns (planned on incorporating them into the project and focusing on it later on)
+    -researched how i could potentially incorporate an AI analyst into the app using recent news and data pulled from yfinance or somewhere else
 
 
 

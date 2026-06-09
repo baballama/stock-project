@@ -25,15 +25,19 @@ other possible features:
 -
 
 *Current Features
+- A stock ticker input for users
+- Real stock data pulled using yfinance
+- Interactive price charts showing stock movement over different time periods
+- A time period selector, such as 1 month, 3 months, 6 months, 1 year, and 5 years
 
-*Tools
-    Streamlit
-    Python
-    yfinance
-    pandas
-    git
-    github
-    plotly
-    vs code
+*Tools used-
+    Streamlit,
+    Python,
+    yfinance,
+    pandas,
+    git,
+    github,
+    plotly,
+    vs code,
 
     
