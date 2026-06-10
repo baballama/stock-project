@@ -38,45 +38,70 @@ extended_hours = st.checkbox(
     value=False
 )
 
-data = stock.history(
-    period=period,
-    interval=interval,
-    prepost=extended_hours
+auto_refresh = st.checkbox(
+    "Auto-refresh data",
+    value=False
 )
 
-st.subheader(f"Recent {ticker.upper()} ticker data")
 
-##st.write(data.tail(5)) Change to company data
-
-st.caption(f"{interval} intervals")
-
-st.subheader(f"{ticker.upper()} Price Chart")
-
-if chart_type == "Line Chart":
-    chart = px.line(
-        data,
-        x=data.index,
-        y="Close",
-        title=f"{ticker.upper()} Share Price Over Time"
-    )
-
+refresh_speed = st.selectbox(
+    "Refresh speed:",
+    ["5s", "15s", "30s", "60s"],
+    index=2
+)
+    
+if auto_refresh:
+    run_rate = refresh_speed
 else:
-    chart = go.Figure(
-        data=[
-            go.Candlestick(
-                x=data.index,
-                open=data["Open"],
-                high=data["High"],
-                low=data["Low"],
-                close=data["Close"]
-            )
-        ]
+    run_rate = None
+
+@st.fragment(run_every=run_rate)
+def chart_section():
+
+    data = stock.history(
+        period=period,
+        interval=interval,
+        prepost=extended_hours
     )
 
-    chart.update_layout(
-        title=f"{ticker.upper()} Candlestick Chart",
-        xaxis_title="Date / Time",
-        yaxis_title="Price"
+    # st.subheader(f"Recent {ticker.upper()} ticker data")
+    # st.write(data.tail(5)) Change to company data
+    # st.caption(f"{interval} intervals")
+
+ 
+    current_price = data["Close"].iloc[-1]
+    
+    st.metric(
+    label=f"{ticker.upper()} Current Share Price",
+    value=f"${current_price}"
     )
 
-st.plotly_chart(chart, use_container_width=True)
+    if chart_type == "Line Chart":
+        chart = px.line(
+            data,
+            x=data.index,
+            y="Close",
+            title=f"{ticker.upper()} Share Price Over Time"
+        )
+
+    else:
+        chart = go.Figure(
+            data=[
+                go.Candlestick(
+                    x=data.index,
+                    open=data["Open"],
+                    high=data["High"],
+                    low=data["Low"],
+                    close=data["Close"]
+                )
+            ]
+        )
+
+        chart.update_layout(
+            title=f"{ticker.upper()} Candlestick Chart",
+            xaxis_title="Date / Time",
+            yaxis_title="Price"
+        )
+
+    st.plotly_chart(chart, use_container_width=True)
+chart_section()

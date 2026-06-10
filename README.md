@@ -20,15 +20,8 @@ By the end of summer, I plan to have:
 - A progress log showing how the project improved over time
 - A deployed version of the app that other people can access online
 
-other possible features: 
-- AI assistant
--
-
 *Current Features
-- A stock ticker input for users
-- Real stock data pulled using yfinance
-- Interactive price charts showing stock movement over different time periods
-- A time period selector, such as 1 month, 3 months, 6 months, 1 year, and 5 years
+    -tracked in progress_log
 
 *Tools used-
     Streamlit,

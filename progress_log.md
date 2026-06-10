@@ -25,9 +25,15 @@ Week 5/31-6/6
 Week 6/7-6/13
     *6/9
     -changed the time period selector to a drop down menu to support later changes
+        -git commit
     -researched how i could potentially incorporate an AI analyst into the app using recent news and data pulled from yfinance or somewhere else
     -learned about candlestick patterns (started adding them to the app using plotly) 
         -also learned candlestick patterns and identified them using historical stock data
-
-
+    *6/10
+    -Implemented a candlestick chart option into the project
+    -Added a checkbox to include/exclude pre/post market data
+    -added a time interval dropdown that allow you to pick the intervals between prices
+        options change based on time period selected
+    -git commit
+    -added a auto data refresh for the chart (not fully live) along with current ticker price
     
