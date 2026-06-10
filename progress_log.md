@@ -25,9 +25,9 @@ Week 5/31-6/6
 Week 6/7-6/13
     *6/9
     -changed the time period selector to a drop down menu to support later changes
-    -learned about candlestick patterns (planned on incorporating them into the project and focusing on it later on)
     -researched how i could potentially incorporate an AI analyst into the app using recent news and data pulled from yfinance or somewhere else
-
+    -learned about candlestick patterns (started adding them to the app using plotly) 
+        -also learned candlestick patterns and identified them using historical stock data
 
 
     
