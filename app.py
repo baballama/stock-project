@@ -73,7 +73,7 @@ def chart_section():
     
     st.metric(
     label=f"{ticker.upper()} Current Share Price",
-    value=f"${current_price:3f}"
+    value=f"${current_price:.3f}"
     )
 
     if chart_type == "Line Chart":

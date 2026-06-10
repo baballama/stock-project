@@ -5,7 +5,7 @@ The project synthesizes 2 passions of mine, investing and coding, by helping me 
 
 The end goal is to build a beginner friendly web app that helps users search stocks, understand price movement, compare performance, and make basic data-based observations.
 
-By the end of summer, I plan to have:
+By the end of summer, I plan to have these basic functions:
 
 - A stock ticker input for users
 - Real stock data pulled using yfinance
@@ -19,6 +19,8 @@ By the end of summer, I plan to have:
 - A cleaner user interface with organized sections, charts, and explanations
 - A progress log showing how the project improved over time
 - A deployed version of the app that other people can access online
+- An AI assistant/analyst
+
 
 *Current Features
     -tracked in progress_log
