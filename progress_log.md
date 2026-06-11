@@ -36,4 +36,11 @@ Week 6/7-6/13
         options change based on time period selected
     -git commit
     -added a auto data refresh for the chart (not fully live) along with current ticker price
+
+
+Current Features
+    Basic stock tracking features (Ticker input, Time period selector)
+    Line Chart and Candlestick chart dropdown menu
+    Auto Update feature with options for refresh rate
+    Option to include/exclude pre/post market data
     

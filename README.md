@@ -25,6 +25,8 @@ By the end of summer, I plan to have these basic functions:
 *Current Features
     -tracked in progress_log
 
+Next Steps/features
+    -tracked in progress_log
 *Tools used-
     Streamlit,
     Python,

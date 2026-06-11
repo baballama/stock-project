@@ -7,7 +7,7 @@ st.title("Stock Tracker")
 
 st.write("Search for stock tickers:")
 
-ticker = st.text_input("Enter a stock ticker:", "QBTS")
+ticker = st.text_input("Enter a stock ticker:", "SMCI")
 
 period = st.selectbox(
     "Choose a time period:",
@@ -64,16 +64,26 @@ def chart_section():
         prepost=extended_hours
     )
 
+    if data.empty:
+        st.error("Data not found, check for spelling errors.")
+        return
+
+
+    
+
     # st.subheader(f"Recent {ticker.upper()} ticker data")
     # st.write(data.tail(5)) Change to company data
     # st.caption(f"{interval} intervals")
 
- 
+    starting_price = data["Close"].iloc[0]
     current_price = data["Close"].iloc[-1]
+
+    percent_change = ((current_price - starting_price) / starting_price) * 100
     
     st.metric(
     label=f"{ticker.upper()} Current Share Price",
-    value=f"${current_price:.3f}"
+    value=f"${current_price:.3f}",
+    delta=f"{percent_change:.2f}%",
     )
 
     if chart_type == "Line Chart":
