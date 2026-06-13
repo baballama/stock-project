@@ -35,12 +35,44 @@ Week 6/7-6/13
     -added a time interval dropdown that allow you to pick the intervals between prices
         options change based on time period selected
     -git commit
-    -added a auto data refresh for the chart (not fully live) along with current ticker price
+    -added a auto data refresh for the chart (not fully live) along with current ticker price with refresh speed selection
+    *6/11
+    -Percentage indicator up/down from market open added
+    -git commit
+    -started working on the next feature (Benchmark comparison: chart, percentage change, dropdown selector)
+    *6/12
+    -continued working on benchmark comparison chart
+    *6/13
+    -finished working on benchmark comparison chart
+        -separate line graph with both the selected ticker and benchmark compared using a percentage based graph with both starting at 0% from the beginning of the selected time period
+        -exact percentage change also displayed
+        -color coded
+
 
 
 Current Features
-    Basic stock tracking features (Ticker input, Time period selector)
-    Line Chart and Candlestick chart dropdown menu
-    Auto Update feature with options for refresh rate
-    Option to include/exclude pre/post market data
-    
+    -Basic stock tracking features
+        -Ticker input, Time period selector, Time between prices selector
+
+    -Line Chart and Candlestick chart dropdown menu
+
+    -Auto Update feature
+        -Dropdown with options for refresh rate
+
+    -Option to include/exclude pre/post market data
+
+    -Benchmark comparison
+        -Dropdown for selecting U.S benchmarks (S&P 500, Nasdaq, Dow Jones, Russell 2000)
+        -Separate color coded line graph comparing tghe selected ticker and benchmark using a percentage change system
+
+
+
+
+
+
+Next Features:
+(In progress) Fix up the code and make it easier to read with comments
+News section, possibly AI analysis
+Portfolio tracker
+Compare multiple tickers at once
+

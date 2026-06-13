@@ -19,6 +19,25 @@ chart_type = st.selectbox(
     ["Candlestick Chart","Line Chart"]
 )
 
+benchmark = st.selectbox(
+    "Choose a benchmark to compare against:",
+    ["S&P 500", "Nasdaq Composite", "Dow Jones", "Russell 2000"]
+)
+
+benchmark_symbols = {
+    "S&P 500": "^GSPC",
+    "Nasdaq Composite": "^IXIC",
+    "Dow Jones": "^DJI",
+    "Russell 2000": "^RUT"
+}
+
+show_benchmark = st.checkbox(
+    "Show benchmark comparison chart",
+    value=False
+)
+
+
+
 stock = yf.Ticker(ticker)
 
 if period == "1d":
@@ -114,4 +133,60 @@ def chart_section():
         )
 
     st.plotly_chart(chart, use_container_width=True)
+    if show_benchmark:
+        benchmark_stock = yf.Ticker(benchmark_symbols[benchmark])
+        benchmark_data = benchmark_stock.history(
+            period=period,
+            interval=interval,
+            prepost=extended_hours
+        )
+
+        if benchmark_data.empty:
+            st.warning("Benchmark data not found.")
+            return
+
+        stock_percent = ((data["Close"] - data["Close"].iloc[0]) / data["Close"].iloc[0]) * 100    
+
+        benchmark_percent = ((benchmark_data["Close"] - benchmark_data["Close"].iloc[0]) / benchmark_data["Close"].iloc[0]) * 100
+
+        benchmark_return = benchmark_percent.iloc[-1]
+
+        st.metric(
+        label=f"{benchmark} Return",
+        value=f"{benchmark_return:.2f}%"
+        )
+        st.metric(
+        label=f"{ticker.upper()} Return",
+        value=f"{percent_change:.2f}%",
+        )
+        st.subheader(f"{ticker.upper()} vs {benchmark}")
+
+        comparison_chart = go.Figure()
+
+        comparison_chart.add_trace(
+            go.Scatter(
+                x=data.index,
+                y=stock_percent,
+                mode="lines",
+                name=ticker.upper()
+            )
+        )
+
+        comparison_chart.add_trace(
+            go.Scatter(
+                x=benchmark_data.index,
+                y=benchmark_percent,
+                mode="lines",
+                name=benchmark
+            )
+        )
+
+        comparison_chart.update_layout(
+            title=f"Percent Return Comparison: {ticker.upper()} vs {benchmark}",
+            xaxis_title="Date / Time",
+            yaxis_title="Percent Return"
+        )
+
+        st.plotly_chart(comparison_chart, use_container_width=True)    
+
 chart_section()
