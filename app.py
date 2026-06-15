@@ -97,6 +97,33 @@ def chart_section():
     value=f"${current_price:.3f}",
     delta=f"{percent_change:.2f}%",
     )
+# Calculate the lowest and highest prices during the selected period
+    pd_low = data["Low"].min()
+    pd_high = data["High"].max()
+# Calculate where the current price sits between the period low and high
+    if pd_high != pd_low:
+        range_position = (current_price - pd_low) / (pd_high - pd_low)
+    elif current_price ==pd_high:
+        range_position = 1
+    else:
+        range_position = 0.5
+# Keep the position between 0 and 1 so the progress bar does not break
+    range_position = max(0, min(range_position, 1))
+
+    st.write(f"Price Range throughout {period}")
+
+    st.progress(range_position)
+
+    col_low, col_current, col_high = st.columns(3)
+
+    with col_low:
+        st.caption(f"Low: ${pd_low:.2f}")
+
+    with col_current:
+        st.caption(f"Current: ${current_price:.2f}")
+
+    with col_high:
+        st.caption(f"High: ${pd_high:.2f}")
 #MAIN CHART FOR THE SELECTED TICKER
 
 #Line chart selected->create line chart from data variable store it in chart var, else create candlestick chart in chart variable
@@ -144,15 +171,18 @@ def chart_section():
         benchmark_percent = ((benchmark_data["Close"] - benchmark_data["Close"].iloc[0]) / benchmark_data["Close"].iloc[0]) * 100
 #Overall percent change for benchmark stock from start to end of selected period
         benchmark_return = benchmark_percent.iloc[-1]
-#Displays percentage change for both stock and benchmark
-        st.metric(
-        label=f"{benchmark} Return",
-        value=f"{benchmark_return:.2f}%"
-        )
-        st.metric(
-        label=f"{ticker.upper()} Return",
-        value=f"{percent_change:.2f}%",
-        )
+#Displays percentage change for both stock and benchmark (side by side))
+        c1,c2=st.columns(2)
+        with c1:
+            st.metric(
+            label=f"{benchmark} Return",
+            value=f"{benchmark_return:.2f}%"
+            )
+        with c2:
+            st.metric(
+            label=f"{ticker.upper()} Return",
+            value=f"{percent_change:.2f}%",
+            )
         st.subheader(f"{ticker.upper()} vs {benchmark}")
 #Create plotly figure
         comparison_chart = go.Figure()

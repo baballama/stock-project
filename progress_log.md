@@ -63,7 +63,11 @@ Current Features
 
     -Benchmark comparison
         -Dropdown for selecting U.S benchmarks (S&P 500, Nasdaq, Dow Jones, Russell 2000)
-        -Separate color coded line graph comparing tghe selected ticker and benchmark using a percentage change system
+        -Separate color coded line graph comparing the selected ticker and benchmark using a percentage change system
+
+    -Price range bar
+        -displays high, low, current price on a line
+        -currently a bit ugly (will improve it later on)
 
 
 
@@ -71,7 +75,7 @@ Current Features
 
 
 Next Features:
-(In progress) Fix up the code and make it easier to read with comments
+
 News section, possibly AI analysis
 Portfolio tracker
 Compare multiple tickers at once
