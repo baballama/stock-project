@@ -155,6 +155,64 @@ def chart_section():
         )
 
     st.plotly_chart(chart, use_container_width=True)
+
+
+#Ticker comparison table input
+    comp_table_input = st.text_input(
+        "Enter tickers to compare, separated by commas:",
+        "QBTS, SMCI, SPCX"
+    )
+#Ticker comparison table
+    st.subheader("Ticker Comparison Table")
+
+    #Turns input into a list
+    compare_tickers = [
+        symbol.strip().upper()
+        for symbol in comp_table_input.split(",")
+        if symbol.strip() != ""
+    ]
+
+    comparison_rows = []
+
+    for symbol in compare_tickers:
+        compare_stock = yf.Ticker(symbol)
+
+        compare_data = compare_stock.history(
+            period=period,
+            interval=interval,
+            prepost=extended_hours
+        )
+
+        if compare_data.empty:
+            comparison_rows.append({
+                "Ticker": symbol,
+                "Latest Price": "Data not found",
+                "Period Return": "N/A",
+                "Period Low": "N/A",
+                "Period High": "N/A"
+            })
+            continue
+
+        compare_start = compare_data["Close"].iloc[0]
+        compare_current = compare_data["Close"].iloc[-1]
+        compare_return = ((compare_current - compare_start) / compare_start) * 100
+        compare_low = compare_data["Low"].min()
+        compare_high = compare_data["High"].max()
+
+        comparison_rows.append({
+            "Ticker": symbol,
+            "Latest Price": f"${compare_current:.2f}",
+            "Period Return": f"{compare_return:.2f}%",
+            "Period Low": f"${compare_low:.2f}",
+            "Period High": f"${compare_high:.2f}"
+        })
+
+    st.table(comparison_rows)
+
+
+
+
+#BENCHMARK     
 #If benchmark option selected create yfinance object from selected benchmark and gather its data, check for empty data    
     if show_benchmark:
         benchmark_stock = yf.Ticker(benchmark_symbols[benchmark])
