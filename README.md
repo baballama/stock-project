@@ -1,11 +1,11 @@
-Beginner Stock Tracker App
+Stock Tracker Web App Summer Project
 
-This is my summer project im working on to become more proficient in python and programming in general, while also learning about data analysis using pandas as a highschooler.
+This is my summer project im working on to become more proficient in python and programming in general as a highschooler.
 The project synthesizes 2 passions of mine, investing and coding, by helping me improve my understanding of each.
 
-The end goal is to build a beginner friendly web app that helps users search stocks, understand price movement, compare performance, and make basic data-based observations.
+The end goal is to build a functional web app that allows users to track stocks, watch price movement, compare performance, and make observations.
 
-By the end of summer, I plan to have these basic functions:
+By the end of summer, I plan to have at least these basic functions:
 
 - A stock ticker input for users
 - Real stock data pulled using yfinance

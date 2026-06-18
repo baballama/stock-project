@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 #Ticker Input
 st.title("Stock Tracker")
 st.write("Search for stock tickers:")
-ticker = st.text_input("Enter a stock ticker:", "SMCI")
+ticker = st.text_input("Enter a stock ticker:", "QBTS")
 #Time period, Chart type, Benchmark selectors
 period = st.selectbox(
     "Choose a time period:",
@@ -81,12 +81,9 @@ def chart_section():
         st.error("Data not found.")
         return
 
+#News section for later
 
-    
 
-    # st.subheader(f"Recent {ticker.upper()} ticker data")
-    # st.write(data.tail(5)) Change to company data
-    # st.caption(f"{interval} intervals")
 #Uses stock history data to retrieve starting and current price and uses that to calculate percent change
     starting_price = data["Close"].iloc[0]
     current_price = data["Close"].iloc[-1]
@@ -155,23 +152,25 @@ def chart_section():
         )
 
     st.plotly_chart(chart, use_container_width=True)
+#END OF MAIN CHART
 
 
+
+
+#MULTIPLE TICKER COMPARISON
 #Ticker comparison table input
     comp_table_input = st.text_input(
         "Enter tickers to compare, separated by commas:",
         "QBTS, SMCI, SPCX"
     )
-#Ticker comparison table
     st.subheader("Ticker Comparison Table")
-
-    #Turns input into a list
+#Turns input into a list
     compare_tickers = [
         symbol.strip().upper()
         for symbol in comp_table_input.split(",")
         if symbol.strip() != ""
     ]
-
+    comparison_chart_data = []
     comparison_rows = []
 
     for symbol in compare_tickers:
@@ -206,10 +205,45 @@ def chart_section():
             "Period Low": f"${compare_low:.2f}",
             "Period High": f"${compare_high:.2f}"
         })
+        comparison_chart_data.append(
+            (symbol, compare_data, compare_return, compare_current)
+        )
 
     st.table(comparison_rows)
+# Limit the number of charts to 6
+    comparison_chart_data = comparison_chart_data[:6]
 
+# Create 2 columns so charts appear side by side
+    chart_cols = st.columns(2)
 
+    for index, item in enumerate(comparison_chart_data):
+    #Unpacks ticker chart info from tuple into separate variables    
+        symbol, compare_data, compare_return, compare_current = item
+ # Choose which column the chart should go into
+        chart_column = chart_cols[index % 2]
+#
+        with chart_column:
+            st.write(f"{symbol}")
+            st.metric(
+                label="Latest Price",
+                value=f"${compare_current:.2f}",
+                delta=f"{compare_return:.2f}%"
+            )
+            mini_chart = px.line(
+                compare_data,
+                x=compare_data.index,
+                y="Close",
+                title=f"{symbol} Price Chart"
+            )
+            mini_chart.update_layout(
+                height=250,
+                margin=dict(l=10, r=10, t=40, b=10),
+                showlegend=False,
+                xaxis_title="",
+                yaxis_title=""
+            )
+            st.plotly_chart(mini_chart, use_container_width=True)
+#END OF MULTIPLE TICKER COMPARISON
 
 
 #BENCHMARK     
@@ -269,5 +303,7 @@ def chart_section():
         )
 
         st.plotly_chart(comparison_chart, use_container_width=True)    
+#END OF BENCHMARK SECTION
+
 #Run chart_section function
 chart_section()

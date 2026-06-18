@@ -47,6 +47,11 @@ Week 6/7-6/13
         -separate line graph with both the selected ticker and benchmark compared using a percentage based graph with both starting at 0% from the beginning of the selected time period
         -exact percentage change also displayed
         -color coded
+    *6/15-6/16
+    -added a period price range bar, git commit
+    -added a new feature where you can insert multiple tickers and compare their data within a table 
+    -
+    
 
 
 
@@ -68,6 +73,9 @@ Current Features
     -Price range bar
         -displays high, low, current price on a line
         -currently a bit ugly (will improve it later on)
+    -Multiple ticker comparison
+        -Input tickers separated by commas which are then displayed in a table with the latest price, period return, period low and high
+    
 
 
 
