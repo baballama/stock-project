@@ -47,11 +47,17 @@ Week 6/7-6/13
         -separate line graph with both the selected ticker and benchmark compared using a percentage based graph with both starting at 0% from the beginning of the selected time period
         -exact percentage change also displayed
         -color coded
+
+    Week 6/14-6/20    
     *6/15-6/16
     -added a period price range bar, git commit
     -added a new feature where you can insert multiple tickers and compare their data within a table 
-    -
-    
+    -6/17
+    -added smaller charts alongside the table to allow visual comparison
+        max of 6 charts to prevent slowness
+    -6/18
+        Lighter day
+            figured out how to retrieve recent news articles for tickers using yfinance news
 
 
 

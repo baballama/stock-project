@@ -2,8 +2,10 @@ import streamlit as st
 import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
+import pandas as pd
 
 #Ticker Input
+st.set_page_config(page_title="Stock Tracker", layout="wide")
 st.title("Stock Tracker")
 st.write("Search for stock tickers:")
 ticker = st.text_input("Enter a stock ticker:", "QBTS")
@@ -82,6 +84,20 @@ def chart_section():
         return
 
 #News section for later
+    news_items = stock.news
+    i=1
+# Display the latest 5 news titles and their publication dates
+    for item in news_items[:5]:
+        
+        title = item["content"]["title"]
+        news_content = item["content"]["summary"]
+        st.subheader(f"{i}.) {title}")
+        st.write(f"*{news_content}")
+        i+=1
+
+
+
+
 
 
 #Uses stock history data to retrieve starting and current price and uses that to calculate percent change
@@ -213,14 +229,14 @@ def chart_section():
 # Limit the number of charts to 6
     comparison_chart_data = comparison_chart_data[:6]
 
-# Create 2 columns so charts appear side by side
-    chart_cols = st.columns(2)
+# Create 3 columns so charts appear side by side
+    chart_cols = st.columns(3)
 
     for index, item in enumerate(comparison_chart_data):
     #Unpacks ticker chart info from tuple into separate variables    
         symbol, compare_data, compare_return, compare_current = item
  # Choose which column the chart should go into
-        chart_column = chart_cols[index % 2]
+        chart_column = chart_cols[index % 3]
 #
         with chart_column:
             st.write(f"{symbol}")
