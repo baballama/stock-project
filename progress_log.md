@@ -58,6 +58,13 @@ Week 6/7-6/13
     -6/18
         Lighter day
             figured out how to retrieve recent news articles for tickers using yfinance news
+    -6/20-6/21
+        Added a recent news section using yfinance news
+            -shows most 5 most recent news articles with their titles and summaries
+            -displays publication dates
+            -the news feature will be improving later on
+        Changed web layout to "wide"
+            made more use of space, allowing me to increase columns of the comparison charts from 2 to 3
 
 
 
@@ -79,8 +86,17 @@ Current Features
     -Price range bar
         -displays high, low, current price on a line
         -currently a bit ugly (will improve it later on)
+
     -Multiple ticker comparison
         -Input tickers separated by commas which are then displayed in a table with the latest price, period return, period low and high
+        -Mini charts under the table that display price over time of selected tickers from the table
+
+    -Recent News
+        -shows most 5 most recent news articles with their titles and summaries
+        -displays publication dates
+        -the news feature will be improving later on
+    
+    
     
 
 
@@ -89,8 +105,8 @@ Current Features
 
 
 Next Features:
-
+AI analysis of stock indicators 
 News section, possibly AI analysis
 Portfolio tracker
-Compare multiple tickers at once
+
 

@@ -3,6 +3,7 @@ import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+from datetime import datetime
 
 #Ticker Input
 st.set_page_config(page_title="Stock Tracker", layout="wide")
@@ -83,18 +84,27 @@ def chart_section():
         st.error("Data not found.")
         return
 
-#News section for later
-    news_items = stock.news
-    i=1
-# Display the latest 5 news titles and their publication dates
-    for item in news_items[:5]:
-        
-        title = item["content"]["title"]
-        news_content = item["content"]["summary"]
-        st.subheader(f"{i}.) {title}")
-        st.write(f"*{news_content}")
-        i+=1
+#News section
+    st.subheader(f"Recent News for {ticker.upper()}")
 
+    try:
+        news_items = stock.news
+
+        if not news_items:
+            st.write("No recent news found.")
+        else:
+            for i, item in enumerate(news_items[:5], start=1):
+                content = item.get("content", {})
+                title = content.get("title", "No title available")
+                news_summary = content.get("summary", "No summary available")
+                publish_date = content.get("pubDate", "Date not available")
+                st.subheader(f"{i}.) {title}")
+                st.caption(f"Published: {publish_date}")
+                st.write(news_summary)
+
+    except Exception as error:
+        st.warning("News data could not be loaded.")
+        st.caption(f"Error: {error}")
 
 
 
