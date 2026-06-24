@@ -1,6 +1,6 @@
 Progress Log
 
-Week 5/24-5/30
+Week 1 5/24-5/30
     *5/29-5/30
     created project folder, 
         -set up progress log & README
@@ -8,7 +8,9 @@ Week 5/24-5/30
         -imported pandas, yfinance, streamlit, plotly for later in the project
         -set up venv
     , learned what each of these do
-Week 5/31-6/6
+
+
+Week 2 5/31-6/6
     *5/31
     -connected local project folder to github repo
     -made 1st git commit
@@ -22,7 +24,9 @@ Week 5/31-6/6
     -deployed app using streamlit
 `   *6/2-6/8
     -break from the project focusing on drivers ed course
-Week 6/7-6/13
+
+
+Week 3 6/7-6/13
     *6/9
     -changed the time period selector to a drop down menu to support later changes
         -git commit
@@ -48,7 +52,8 @@ Week 6/7-6/13
         -exact percentage change also displayed
         -color coded
 
-    Week 6/14-6/20    
+
+    Week 4 6/14-6/20    
     *6/15-6/16
     -added a period price range bar, git commit
     -added a new feature where you can insert multiple tickers and compare their data within a table 
@@ -65,6 +70,14 @@ Week 6/7-6/13
             -the news feature will be improving later on
         Changed web layout to "wide"
             made more use of space, allowing me to increase columns of the comparison charts from 2 to 3
+            -git commit
+    -6/21-6/24
+        Researched stock indicators including EMA, VWAP, Pivot points, RSI, MACD, Bollinger Bands and how to read them
+            -shifted main focus of project to a more functional stock tracker and researcher
+        Added some stock indicators to the project
+            -select which indicators you want to show on the chart
+            -current options: "EMA 20", "EMA 50", "EMA 200", "VWAP", "RSI", "Pivot Points", "Volume Bars",
+
 
 
 
@@ -95,8 +108,9 @@ Current Features
         -shows most 5 most recent news articles with their titles and summaries
         -displays publication dates
         -the news feature will be improving later on
-    
-    
+    -Stock indicators
+        -select which indicators you want to show on the chart
+        -current options: "EMA 20", "EMA 50", "EMA 200", "VWAP", "RSI", "Pivot Points", "Volume Bars",
     
 
 

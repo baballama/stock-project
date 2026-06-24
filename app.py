@@ -4,6 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime
+from plotly.subplots import make_subplots
+from yfinance import data
 
 #Ticker Input
 st.set_page_config(page_title="Stock Tracker", layout="wide")
@@ -36,8 +38,13 @@ show_benchmark = st.checkbox(
     "Show benchmark comparison chart",
     value=False
 )
-
-
+#Stock indicator dropdown selector
+stock_indicators = st.multiselect(
+    "Choose stock indicators to display:",
+    ["EMA 20", "EMA 50", "EMA 200", "VWAP", "RSI", "Pivot Points", "Volume Bars"],
+    default=["EMA 20", "EMA 50", "VWAP", "Volume Bars"]
+)
+st.caption("Indicators are calculated using the selected chart interval.")
 #Turns ticker into yfinance object
 stock = yf.Ticker(ticker)
 #Changes time between data based on period
@@ -71,6 +78,48 @@ if auto_refresh:
     run_rate = refresh_speed
 else:
     run_rate = None
+
+#Calculate indicators functions
+def calculate_rsi(close_prices, window=14):
+    price_change = close_prices.diff()
+
+    gains = price_change.clip(lower=0)
+    losses = -price_change.clip(upper=0)
+
+    average_gain = gains.rolling(window=window).mean()
+    average_loss = losses.rolling(window=window).mean()
+
+    rs = average_gain / average_loss
+    rsi = 100 - (100 / (1 + rs))
+
+    return rsi
+
+
+def calculate_pivot_points(data):
+    if len(data) < 2:
+        return None
+
+    previous_high = data["High"].iloc[-2]
+    previous_low = data["Low"].iloc[-2]
+    previous_close = data["Close"].iloc[-2]
+
+    pivot = (previous_high + previous_low + previous_close) / 3
+
+    resistance_1 = (2 * pivot) - previous_low
+    support_1 = (2 * pivot) - previous_high
+
+    resistance_2 = pivot + (previous_high - previous_low)
+    support_2 = pivot - (previous_high - previous_low)
+
+    return {
+        "Pivot": pivot,
+        "R1": resistance_1,
+        "S1": support_1,
+        "R2": resistance_2,
+        "S2": support_2
+    }
+
+
 @st.fragment(run_every=run_rate)
 def chart_section():
 #Downloads variable stock's history using customization from above
@@ -83,10 +132,19 @@ def chart_section():
     if data.empty:
         st.error("Data not found.")
         return
+#Calculates EMA, RSI and Pivot Points and stores them in the data variable
+    data["EMA_20"] = data["Close"].ewm(span=20, adjust=False).mean()
+    data["EMA_50"] = data["Close"].ewm(span=50, adjust=False).mean()
+    data["EMA_200"] = data["Close"].ewm(span=200, adjust=False).mean()
+    data["RSI"] = calculate_rsi(data["Close"])
+    pivot_points = calculate_pivot_points(data)
+#VWAP Calculation, uses typical price and volume to calculate VWAP and stores it in the data variable
+    data["Typical_Price"] = (data["High"] + data["Low"] + data["Close"]) / 3
+    data["VWAP"] = (data["Typical_Price"] * data["Volume"]).cumsum() / data["Volume"].cumsum()
 
 #News section
     st.subheader(f"Recent News for {ticker.upper()}")
-
+#check if news data available, if not display message, if error occurs display error message, else display news items (up to 5)
     try:
         news_items = stock.news
 
@@ -101,7 +159,7 @@ def chart_section():
                 st.subheader(f"{i}.) {title}")
                 st.caption(f"Published: {publish_date}")
                 st.write(news_summary)
-
+#If error occurs while loading news data, display warning and error message
     except Exception as error:
         st.warning("News data could not be loaded.")
         st.caption(f"Error: {error}")
@@ -147,38 +205,198 @@ def chart_section():
 
     with col_high:
         st.caption(f"High: ${pd_high:.2f}")
-#MAIN CHART FOR THE SELECTED TICKER
 
-#Line chart selected->create line chart from data variable store it in chart var, else create candlestick chart in chart variable
-    if chart_type == "Line Chart":
-        chart = px.line(
-            data,
-            x=data.index,
-            y="Close",
-            title=f"{ticker.upper()} Share Price Over Time"
+
+
+
+
+
+        #MAIN CHART FOR THE SELECTED TICKER
+
+    #Checks if volume bars are selected
+    show_volume = "Volume Bars" in stock_indicators
+
+    #Creates 2-row chart if volume is selected
+    if show_volume:
+        chart = make_subplots(
+            rows=2,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.05,
+            row_heights=[0.75, 0.25]
         )
-
+    #Creates normal chart if volume is not selected
     else:
-        chart = go.Figure(
-            data=[
-                go.Candlestick(
-                    x=data.index,
-                    open=data["Open"],
-                    high=data["High"],
-                    low=data["Low"],
-                    close=data["Close"]
-                )
-            ]
-        )
-#Labels graph
-        chart.update_layout(
-            title=f"{ticker.upper()} Candlestick Chart",
-            xaxis_title="Date / Time",
-            yaxis_title="Price"
+        chart = go.Figure()
+
+    #Creates line chart if selected
+    if chart_type == "Line Chart":
+        price_trace = go.Scatter(
+            x=data.index,
+            y=data["Close"],
+            mode="lines",
+            name="Close"
         )
 
+    #Creates candlestick chart if selected
+    else:
+        price_trace = go.Candlestick(
+            x=data.index,
+            open=data["Open"],
+            high=data["High"],
+            low=data["Low"],
+            close=data["Close"],
+            name="Candlestick"
+        )
+
+    #Adds price chart to correct chart row
+    if show_volume:
+        chart.add_trace(price_trace, row=1, col=1)
+    else:
+        chart.add_trace(price_trace)
+
+    #Matches indicator names to data columns
+    ema_choices = {
+        "EMA 20": "EMA_20",
+        "EMA 50": "EMA_50",
+        "EMA 200": "EMA_200"
+    }
+
+    #Adds selected EMA lines
+    for indicator_name, column_name in ema_choices.items():
+        if indicator_name in stock_indicators:
+            ema_trace = go.Scatter(
+                x=data.index,
+                y=data[column_name],
+                mode="lines",
+                name=indicator_name
+            )
+
+            #Adds EMA to price row if volume chart exists
+            if show_volume:
+                chart.add_trace(ema_trace, row=1, col=1)
+            else:
+                chart.add_trace(ema_trace)
+
+        #Adds VWAP line if selected
+    if "VWAP" in stock_indicators:
+        vwap_trace = go.Scatter(
+            x=data.index,
+            y=data["VWAP"],
+            mode="lines",
+            name="VWAP"
+        )
+
+        #Adds VWAP to price row if volume chart exists
+        if show_volume:
+            chart.add_trace(vwap_trace, row=1, col=1)
+        else:
+            chart.add_trace(vwap_trace)
+
+    #Adds pivot point lines if selected
+    if "Pivot Points" in stock_indicators and pivot_points is not None:
+
+        #Sets pivot color based on theme
+        if st.get_option("theme.base") == "dark":
+            pivot_color = "white"
+        else:
+            pivot_color = "black"
+
+        #Adds each pivot level as a horizontal line
+        for level_name, level_price in pivot_points.items():
+            if show_volume:
+                chart.add_hline(
+                    y=level_price,
+                    line_dash="dot",
+                    line_color=pivot_color,
+                    annotation_text=level_name,
+                    annotation_position="right",
+                    annotation_font_color=pivot_color,
+                    row=1,
+                    col=1
+                )
+            else:
+                chart.add_hline(
+                    y=level_price,
+                    line_dash="dot",
+                    line_color=pivot_color,
+                    annotation_text=level_name,
+                    annotation_position="right",
+                    annotation_font_color=pivot_color
+                )
+
+    #Adds volume bars if selected
+    if show_volume:
+        chart.add_trace(
+            go.Bar(
+                x=data.index,
+                y=data["Volume"],
+                name="Volume"
+            ),
+            row=2,
+            col=1
+        )
+
+        #Labels price and volume axes
+        chart.update_yaxes(title_text="Price", row=1, col=1)
+        chart.update_yaxes(title_text="Volume", row=2, col=1)
+
+    #Labels main chart
+    chart.update_layout(
+        title=f"{ticker.upper()} Stock Chart",
+        xaxis_title="Date / Time",
+        yaxis_title="Price",
+        height=700
+    )
+
+    #Displays main chart
     st.plotly_chart(chart, use_container_width=True)
-#END OF MAIN CHART
+
+    #Creates RSI chart if selected
+    if "RSI" in stock_indicators:
+        rsi_chart = go.Figure()
+
+        #Adds RSI line
+        rsi_chart.add_trace(
+            go.Scatter(
+                x=data.index,
+                y=data["RSI"],
+                mode="lines",
+                name="RSI"
+            )
+        )
+
+        #Adds overbought reference line
+        rsi_chart.add_hline(
+            y=70,
+            line_dash="dot",
+            annotation_text="Overbought 70",
+            annotation_position="right"
+        )
+
+        #Adds oversold reference line
+        rsi_chart.add_hline(
+            y=30,
+            line_dash="dot",
+            annotation_text="Oversold 30",
+            annotation_position="right"
+        )
+
+        #Labels RSI chart
+        rsi_chart.update_layout(
+            title=f"{ticker.upper()} RSI",
+            xaxis_title="Date / Time",
+            yaxis_title="RSI",
+            height=300
+        )
+
+        #Displays RSI chart
+        st.plotly_chart(rsi_chart, use_container_width=True)
+
+    #END OF MAIN CHART
+
+
+
 
 
 
