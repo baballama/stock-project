@@ -8,7 +8,7 @@ Week 1 5/24-5/30
         -imported pandas, yfinance, streamlit, plotly for later in the project
         -set up venv
     , learned what each of these do
-
+Added stock indicator 
 
 Week 2 5/31-6/6
     *5/31
@@ -63,6 +63,9 @@ Week 3 6/7-6/13
     -6/18
         Lighter day
             figured out how to retrieve recent news articles for tickers using yfinance news
+
+
+    Week 5 6/21-27
     -6/20-6/21
         Added a recent news section using yfinance news
             -shows most 5 most recent news articles with their titles and summaries
@@ -77,6 +80,19 @@ Week 3 6/7-6/13
         Added some stock indicators to the project
             -select which indicators you want to show on the chart
             -current options: "EMA 20", "EMA 50", "EMA 200", "VWAP", "RSI", "Pivot Points", "Volume Bars",
+    -6/26
+        Researched how to analyze indicators together
+            -learned EMA = trend, VWAP = buyer/seller control, RSI = momentum, Pivot Points = support/resistance, Volume = confirmation
+        Planned next feature: AI analysis of all indicators together
+            -decided to use calculated indicator values first, then have AI explain the bullish/bearish case
+            -looked into Ollama for local AI explanations
+    -6/27-6/28
+        Added indicator reader feature
+            -uses calculated EMA, VWAP, RSI, Pivot Points, and Volume values to create a simple technical summary
+            -shows trend, momentum, VWAP position, pivot position, and volume confirmation
+        Added local Ollama AI analysis
+            -uses the indicator reader results to generate a bullish and bearish explanation
+            -keeps the AI analysis based on data to prevent hallucinations
 
 
 
@@ -108,10 +124,17 @@ Current Features
         -shows most 5 most recent news articles with their titles and summaries
         -displays publication dates
         -the news feature will be improving later on
+
     -Stock indicators
         -select which indicators you want to show on the chart
         -current options: "EMA 20", "EMA 50", "EMA 200", "VWAP", "RSI", "Pivot Points", "Volume Bars",
-    
+
+    Indicator explanation feature
+        -uses calculated EMA, VWAP, RSI, Pivot Points, and Volume values to create a simple technical summary
+        -shows trend, momentum, VWAP position, pivot position, and volume confirmation
+
+    -Local Ollama AI analysis
+        -uses Ollama to analyze the stock indicators locally and summarize them 
 
 
 
@@ -119,8 +142,8 @@ Current Features
 
 
 Next Features:
-AI analysis of stock indicators 
-News section, possibly AI analysis
+AI analysis on the actual web app not just local
+AI analysis of recent news
 Portfolio tracker
-
+Table of contents in code to make reading it easier
 

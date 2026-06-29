@@ -3,7 +3,7 @@ Stock Tracker Web App Summer Project
 This is my summer project im working on to become more proficient in python and programming in general as a highschooler.
 The project synthesizes 2 passions of mine, investing and coding, by helping me improve my understanding of each.
 
-The end goal is to build a functional web app that allows users to track stocks, watch price movement, compare performance, and make observations.
+The end goal is to build a functional web app that helps users learn how to track stocks, watch price movement, compare performance, and make observations.
 
 By the end of summer, I plan to have at least these basic functions:
 
@@ -36,5 +36,6 @@ Next Steps/features
     github,
     plotly,
     vs code,
+    ollama
 
     

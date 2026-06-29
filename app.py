@@ -3,9 +3,10 @@ import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+import requests
 from datetime import datetime
 from plotly.subplots import make_subplots
-from yfinance import data
+
 
 #Ticker Input
 st.set_page_config(page_title="Stock Tracker", layout="wide")
@@ -118,10 +119,156 @@ def calculate_pivot_points(data):
         "R2": resistance_2,
         "S2": support_2
     }
+    #Analyzes all indicators together using simple rules
+def analyze_indicators(data, pivot_points):
+    current_price = data["Close"].iloc[-1]
+    current_volume = data["Volume"].iloc[-1]
 
+    ema_20 = data["EMA_20"].iloc[-1]
+    ema_50 = data["EMA_50"].iloc[-1]
+    ema_200 = data["EMA_200"].iloc[-1]
+    rsi = data["RSI"].iloc[-1]
+    vwap = data["VWAP"].iloc[-1]
+
+    average_volume = data["Volume"].tail(20).mean()
+
+    analysis = {}
+
+    #Analyze EMA trend
+    if current_price > ema_20 > ema_50 > ema_200:
+        analysis["Trend"] = "Bullish"
+        analysis["Trend Reason"] = "Price is above EMA 20, EMA 50, and EMA 200."
+    elif current_price < ema_20 < ema_50 < ema_200:
+        analysis["Trend"] = "Bearish"
+        analysis["Trend Reason"] = "Price is below EMA 20, EMA 50, and EMA 200."
+    elif current_price > ema_50:
+        analysis["Trend"] = "Mildly Bullish"
+        analysis["Trend Reason"] = "Price is above EMA 50, but the full EMA structure is not strongly bullish."
+    elif current_price < ema_50:
+        analysis["Trend"] = "Mildly Bearish"
+        analysis["Trend Reason"] = "Price is below EMA 50, showing weaker medium-term trend."
+    else:
+        analysis["Trend"] = "Neutral"
+        analysis["Trend Reason"] = "Price is close to the main moving averages."
+
+    #Analyze RSI momentum
+    if rsi >= 70:
+        analysis["Momentum"] = "Strong / Overbought"
+        analysis["Momentum Reason"] = "RSI is above 70, showing strong momentum but higher pullback risk."
+    elif rsi >= 50:
+        analysis["Momentum"] = "Bullish"
+        analysis["Momentum Reason"] = "RSI is above 50, showing positive momentum."
+    elif rsi <= 30:
+        analysis["Momentum"] = "Weak / Oversold"
+        analysis["Momentum Reason"] = "RSI is below 30, showing heavy selling pressure but possible bounce risk."
+    else:
+        analysis["Momentum"] = "Bearish"
+        analysis["Momentum Reason"] = "RSI is below 50, showing weaker momentum."
+
+    #Analyze VWAP
+    if current_price > vwap:
+        analysis["VWAP"] = "Bullish"
+        analysis["VWAP Reason"] = "Price is above VWAP, meaning buyers are trading above the volume-weighted average price."
+    elif current_price < vwap:
+        analysis["VWAP"] = "Bearish"
+        analysis["VWAP Reason"] = "Price is below VWAP, meaning sellers are trading below the volume-weighted average price."
+    else:
+        analysis["VWAP"] = "Neutral"
+        analysis["VWAP Reason"] = "Price is very close to VWAP."
+
+    #Analyze pivot points
+    if pivot_points is not None:
+        pivot = pivot_points["Pivot"]
+        r1 = pivot_points["R1"]
+        s1 = pivot_points["S1"]
+
+        if current_price > r1:
+            analysis["Pivot"] = "Bullish Breakout"
+            analysis["Pivot Reason"] = "Price is above R1 resistance."
+        elif current_price > pivot:
+            analysis["Pivot"] = "Bullish"
+            analysis["Pivot Reason"] = "Price is above the main pivot level."
+        elif current_price < s1:
+            analysis["Pivot"] = "Bearish Breakdown"
+            analysis["Pivot Reason"] = "Price is below S1 support."
+        elif current_price < pivot:
+            analysis["Pivot"] = "Bearish"
+            analysis["Pivot Reason"] = "Price is below the main pivot level."
+        else:
+            analysis["Pivot"] = "Neutral"
+            analysis["Pivot Reason"] = "Price is close to the main pivot level."
+    else:
+        analysis["Pivot"] = "Unavailable"
+        analysis["Pivot Reason"] = "Not enough data to calculate pivot points."
+
+    #Analyze volume
+    if current_volume > average_volume * 1.5:
+        analysis["Volume"] = "High"
+        analysis["Volume Reason"] = "Current volume is much higher than the recent 20-candle average."
+    elif current_volume > average_volume:
+        analysis["Volume"] = "Above Average"
+        analysis["Volume Reason"] = "Current volume is above the recent 20-candle average."
+    else:
+        analysis["Volume"] = "Normal / Weak"
+        analysis["Volume Reason"] = "Current volume is not strongly above the recent average."
+
+    return analysis
+
+#Sends indicator data to Ollama for AI explanation
+def generate_ollama_analysis(ticker, current_price, indicator_analysis, model_name="llama3.1"):
+    prompt = f"""
+You are helping analyze a stock dashboard.
+
+Use ONLY the indicator information below.
+Do not invent company news, earnings, price targets, or fundamentals.
+Do not give direct buy/sell financial advice.
+
+Ticker: {ticker}
+Current price: ${current_price:.2f}
+
+Trend: {indicator_analysis["Trend"]}
+Trend reason: {indicator_analysis["Trend Reason"]}
+
+Momentum: {indicator_analysis["Momentum"]}
+Momentum reason: {indicator_analysis["Momentum Reason"]}
+
+VWAP: {indicator_analysis["VWAP"]}
+VWAP reason: {indicator_analysis["VWAP Reason"]}
+
+Pivot: {indicator_analysis["Pivot"]}
+Pivot reason: {indicator_analysis["Pivot Reason"]}
+
+Volume: {indicator_analysis["Volume"]}
+Volume reason: {indicator_analysis["Volume Reason"]}
+
+Write the analysis in this format:
+
+Overall Technical Read:
+Bullish Case:
+Bearish Case:
+What To Watch:
+Beginner Explanation:
+
+Keep it clear, balanced, and not too long.
+"""
+
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": model_name,
+            "prompt": prompt,
+            "stream": False
+        }
+    )
+
+    if response.status_code != 200:
+        return "AI analysis could not be generated. Make sure Ollama is running."
+
+    return response.json()["response"]
 
 @st.fragment(run_every=run_rate)
 def chart_section():
+
 #Downloads variable stock's history using customization from above
     data = stock.history(
         period=period,
@@ -136,11 +283,13 @@ def chart_section():
     data["EMA_20"] = data["Close"].ewm(span=20, adjust=False).mean()
     data["EMA_50"] = data["Close"].ewm(span=50, adjust=False).mean()
     data["EMA_200"] = data["Close"].ewm(span=200, adjust=False).mean()
-    data["RSI"] = calculate_rsi(data["Close"])
-    pivot_points = calculate_pivot_points(data)
-#VWAP Calculation, uses typical price and volume to calculate VWAP and stores it in the data variable
     data["Typical_Price"] = (data["High"] + data["Low"] + data["Close"]) / 3
     data["VWAP"] = (data["Typical_Price"] * data["Volume"]).cumsum() / data["Volume"].cumsum()
+
+    data["RSI"] = calculate_rsi(data["Close"])
+    pivot_points = calculate_pivot_points(data)
+
+    indicator_analysis = analyze_indicators(data, pivot_points)
 
 #News section
     st.subheader(f"Recent News for {ticker.upper()}")
@@ -395,9 +544,45 @@ def chart_section():
 
     #END OF MAIN CHART
 
+    #TECHNICAL INDICATOR SUMMARY
+    st.subheader("Technical Indicator Summary")
 
+    col1, col2, col3 = st.columns(3)
 
+    with col1:
+        st.metric("Trend", indicator_analysis["Trend"])
+        st.caption(indicator_analysis["Trend Reason"])
 
+    with col2:
+        st.metric("Momentum", indicator_analysis["Momentum"])
+        st.caption(indicator_analysis["Momentum Reason"])
+
+    with col3:
+        st.metric("VWAP", indicator_analysis["VWAP"])
+        st.caption(indicator_analysis["VWAP Reason"])
+
+    col4, col5 = st.columns(2)
+
+    with col4:
+        st.metric("Pivot", indicator_analysis["Pivot"])
+        st.caption(indicator_analysis["Pivot Reason"])
+
+    with col5:
+        st.metric("Volume", indicator_analysis["Volume"])
+        st.caption(indicator_analysis["Volume Reason"])
+
+        #AI TECHNICAL ANALYSIS
+    st.subheader("AI Technical Analysis")
+
+    if st.button("Generate AI Technical Analysis"):
+        with st.spinner("Generating AI analysis..."):
+            ai_analysis = generate_ollama_analysis(
+                ticker=ticker.upper(),
+                current_price=current_price,
+                indicator_analysis=indicator_analysis
+            )
+
+        st.write(ai_analysis)
 
 
 
