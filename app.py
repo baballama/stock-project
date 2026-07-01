@@ -6,6 +6,7 @@ import pandas as pd
 import requests
 from datetime import datetime
 from plotly.subplots import make_subplots
+from groq import Groq
 
 
 #Ticker Input
@@ -265,6 +266,37 @@ Keep it clear, balanced, and not too long.
         return "AI analysis could not be generated. Make sure Ollama is running."
 
     return response.json()["response"]
+
+
+
+def ask_groq_test():
+    try:
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant."
+                },
+                {
+                    "role": "user",
+                    "content": "Say: Groq is connected successfully."
+                }
+            ],
+            temperature=0.2
+        )
+
+        return response.choices[0].message.content
+
+    except Exception as error:
+        return f"AI connection error: {error}"
+
+
+
+
+
 
 @st.fragment(run_every=run_rate)
 def chart_section():
