@@ -279,7 +279,7 @@ def ask_groq(prompt):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a stock research assistant. Explain technical indicators clearly. Do not give direct buy or sell recommendations."
+                    "content": "You are a stock research assistant. Explain the data clearly. Do not give direct buy or sell recommendations. Ensure that your response uses consistent font."
                 },
                 {
                     "role": "user",
@@ -331,8 +331,243 @@ Beginner Explanation:
 """
     return prompt    
 
+#Formats large numbers like market cap into readable text
+def format_large_number(number):
+    if number is None:
+        return "N/A"
+
+    try:
+        number = float(number)
+
+        if number >= 1_000_000_000_000:
+            return f"${number / 1_000_000_000_000:.2f}T"
+        elif number >= 1_000_000_000:
+            return f"${number / 1_000_000_000:.2f}B"
+        elif number >= 1_000_000:
+            return f"${number / 1_000_000:.2f}M"
+        else:
+            return f"${number:,.2f}"
+
+    except:
+        return "N/A"
+
+#Formats percentages like dividend yield into readable text
+def format_percent(number):
+    if number is None:
+        return "N/A"
+
+    try:
+        return f"{number * 100:.2f}%"
+
+    except:
+        return "N/A"
+
+#Suggests a benchmark based on the company's sector
+def suggest_benchmark(sector):
+    if sector is None:
+        return "S&P 500"
+
+    sector = sector.lower()
+
+    if "technology" in sector:
+        return "Nasdaq Composite"
+    elif "communication" in sector:
+        return "Nasdaq Composite"
+    elif "financial" in sector:
+        return "S&P 500"
+    elif "healthcare" in sector:
+        return "S&P 500"
+    elif "energy" in sector:
+        return "S&P 500"
+    elif "industrial" in sector:
+        return "S&P 500"
+    elif "consumer cyclical" in sector:
+        return "S&P 500"
+    elif "consumer defensive" in sector:
+        return "S&P 500"
+    elif "real estate" in sector:
+        return "S&P 500"
+    elif "utilities" in sector:
+        return "S&P 500"
+    else:
+        return "S&P 500"
+
+#Displays company profile and fundamental data from yfinance
+def display_company_profile(stock, ticker):
+    try:
+        company_info = stock.info
+
+        company_name = company_info.get("longName", ticker.upper())
+        sector = company_info.get("sector", "N/A")
+        industry = company_info.get("industry", "N/A")
+        website = company_info.get("website", "N/A")
+        country = company_info.get("country", "N/A")
+        exchange = company_info.get("exchange", "N/A")
+        quote_type = company_info.get("quoteType", "N/A")
+        business_summary = company_info.get("longBusinessSummary", "No business summary available.")
+
+        market_cap = company_info.get("marketCap")
+        trailing_pe = company_info.get("trailingPE")
+        forward_pe = company_info.get("forwardPE")
+        eps = company_info.get("trailingEps")
+        dividend_yield = company_info.get("dividendYield")
+        beta = company_info.get("beta")
+        fifty_two_week_high = company_info.get("fiftyTwoWeekHigh")
+        fifty_two_week_low = company_info.get("fiftyTwoWeekLow")
+
+        suggested_benchmark = suggest_benchmark(sector)
+
+        st.subheader("Company Profile")
+
+        st.write(f"### {company_name}")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric("Ticker", ticker.upper())
+            st.metric("Sector", sector)
+            st.metric("Industry", industry)
+
+        with col2:
+            st.metric("Market Cap", format_large_number(market_cap))
+            st.metric("P/E Ratio", "N/A" if trailing_pe is None else f"{trailing_pe:.2f}")
+            st.metric("Forward P/E", "N/A" if forward_pe is None else f"{forward_pe:.2f}")
+
+        with col3:
+            st.metric("EPS", "N/A" if eps is None else f"${eps:.2f}")
+            st.metric("Dividend Yield", format_percent(dividend_yield))
+            st.metric("Beta", "N/A" if beta is None else f"{beta:.2f}")
+
+        col4, col5, col6 = st.columns(3)
+
+        with col4:
+            st.metric("52 Week High", "N/A" if fifty_two_week_high is None else f"${fifty_two_week_high:.2f}")
+
+        with col5:
+            st.metric("52 Week Low", "N/A" if fifty_two_week_low is None else f"${fifty_two_week_low:.2f}")
+
+        with col6:
+            st.metric("Suggested Benchmark", suggested_benchmark)
+
+        st.write(f"**Exchange:** {exchange}")
+        st.write(f"**Quote Type:** {quote_type}")
+        st.write(f"**Country:** {country}")
+        st.write(f"**Website:** {website}")
+
+        with st.expander("Business Summary"):
+            st.write(business_summary)
+
+        with st.expander("Raw Company Data"):
+            st.json(company_info)
+
+    except Exception as error:
+        st.warning("Company profile could not be loaded.")
+        st.caption(f"Error: {error}")
 
 
+#Creates a prompt using the calculated indicator summary
+#Creates a prompt for AI company profile analysis
+def create_info_prompt(ticker, company_info):
+    company_name = company_info.get("longName", ticker.upper())
+    sector = company_info.get("sector", "N/A")
+    industry = company_info.get("industry", "N/A")
+    website = company_info.get("website", "N/A")
+    country = company_info.get("country", "N/A")
+    exchange = company_info.get("exchange", "N/A")
+    quote_type = company_info.get("quoteType", "N/A")
+    business_summary = company_info.get("longBusinessSummary", "No business summary available.")
+
+    market_cap = company_info.get("marketCap", "N/A")
+    trailing_pe = company_info.get("trailingPE", "N/A")
+    forward_pe = company_info.get("forwardPE", "N/A")
+    eps = company_info.get("trailingEps", "N/A")
+    dividend_yield = company_info.get("dividendYield", "N/A")
+    beta = company_info.get("beta", "N/A")
+
+    fifty_two_week_high = company_info.get("fiftyTwoWeekHigh", "N/A")
+    fifty_two_week_low = company_info.get("fiftyTwoWeekLow", "N/A")
+    current_price = company_info.get("currentPrice", "N/A")
+
+    total_revenue = company_info.get("totalRevenue", "N/A")
+    revenue_growth = company_info.get("revenueGrowth", "N/A")
+    gross_margins = company_info.get("grossMargins", "N/A")
+    profit_margins = company_info.get("profitMargins", "N/A")
+    operating_margins = company_info.get("operatingMargins", "N/A")
+
+    total_cash = company_info.get("totalCash", "N/A")
+    total_debt = company_info.get("totalDebt", "N/A")
+    free_cashflow = company_info.get("freeCashflow", "N/A")
+    operating_cashflow = company_info.get("operatingCashflow", "N/A")
+
+    analyst_rating = company_info.get("recommendationKey", "N/A")
+    target_mean_price = company_info.get("targetMeanPrice", "N/A")
+    number_of_analyst_opinions = company_info.get("numberOfAnalystOpinions", "N/A")
+
+    prompt = f"""
+Analyze this company's profile and fundamentals using only the data provided.
+
+Do not give a direct buy or sell recommendation.
+Do not invent missing data.
+Do not make up news, earnings results, or future price targets.
+If a value says N/A, explain that the data is unavailable.
+Keep the explanation beginner-friendly.
+
+Ticker: {ticker.upper()}
+Company name: {company_name}
+Sector: {sector}
+Industry: {industry}
+Country: {country}
+Exchange: {exchange}
+Quote type: {quote_type}
+Website: {website}
+
+Business summary:
+{business_summary}
+
+Valuation:
+Market cap: {market_cap}
+Current price: {current_price}
+Trailing P/E: {trailing_pe}
+Forward P/E: {forward_pe}
+EPS: {eps}
+Dividend yield: {dividend_yield}
+Beta: {beta}
+
+52-week range:
+52-week high: {fifty_two_week_high}
+52-week low: {fifty_two_week_low}
+
+Revenue and margins:
+Total revenue: {total_revenue}
+Revenue growth: {revenue_growth}
+Gross margins: {gross_margins}
+Profit margins: {profit_margins}
+Operating margins: {operating_margins}
+
+Cash flow and balance sheet:
+Total cash: {total_cash}
+Total debt: {total_debt}
+Free cash flow: {free_cashflow}
+Operating cash flow: {operating_cashflow}
+
+Analyst data:
+Analyst rating: {analyst_rating}
+Mean target price: {target_mean_price}
+Number of analyst opinions: {number_of_analyst_opinions}
+
+Format the answer like this:
+
+Company Overview:
+What The Company Does:
+Industry / Sector Context:
+Valuation Check:
+Financial Strength:
+Growth / Profitability:
+Risk Factors:
+Good Benchmark To Compare Against:
+Beginner Explanation:
+"""
+    return prompt
 
 
 
@@ -617,7 +852,7 @@ def chart_section():
 #GROQ AI TECHNICAL ANALYSIS
     st.subheader("AI Technical Analysis")
 
-    if st.button("Generate Groq AI Technical Analysis"):
+    if st.button("Generate Groq AI Stock Indicator Analysis"):
         prompt = create_indicator_prompt(
             ticker=ticker,
             current_price=current_price,
@@ -667,9 +902,29 @@ def chart_section():
     #         )
 
     #     st.write(ai_analysis)
+#run/stop company data function
+    company_data_display = st.selectbox(
+        "Display/Hide Company data:",
+        ["Display Company Data","Hide Company Data"]
+    )
 
+    if company_data_display == "Display Company Data":
+        display_company_profile(stock, ticker)
+    else:
+        st.write("Company data is hidden. Select 'Display Company Data' to view it.")
 
+    st.subheader("AI Company Data Analysis")
 
+    if st.button("Generate Groq AI Analysis"):
+        prompt = create_info_prompt(
+            ticker=ticker,
+            company_info=stock.info
+        )
+
+        with st.spinner("Generating Groq AI analysis..."):
+            ai_response = ask_groq(prompt)
+
+        st.write(ai_response)
 #MULTIPLE TICKER COMPARISON
 #Ticker comparison table input
     comp_table_input = st.text_input(

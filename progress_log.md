@@ -1,4 +1,4 @@
-Progress Log
+Progress Log (CHECK CURRENT FEATURES MORE DETAILED DESCRIPTIONS)
 
 Week 1 5/24-5/30
     *5/29-5/30
@@ -93,6 +93,7 @@ Week 3 6/7-6/13
         Added local Ollama AI analysis
             -uses the indicator reader results to generate a bullish and bearish explanation
             -keeps the AI analysis based on data to prevent hallucinations
+    Week 6 6/28-7/4
     -6/29
         Researched alternatives to Ollama for AI analysis that could work on the website
             Landed on Groq
@@ -105,7 +106,9 @@ Week 3 6/7-6/13
         Added a disclosure surrounding AI usage in the readme
             -git commit
         Added more to the list of next features
-
+    -7/2
+        Added Company data section and AI analysis check "Current Features" for more details
+        git commit
 
 
 
@@ -151,7 +154,12 @@ Current Features
     -Groq AI analysis
         -same prompt as Ollama indicator summary except it works online
 
+    -Company data section
+        -Market Cap, EPS, Sector, P/E, Suggested Benchmark feature, business summary, etc.
 
+    -Company Data AI (Groq) Analysis Feature
+        Summarizes all information from company data in a beginner friendly way
+        -Answers in this format: Company overview, What Company does, Industry/Sector Context, ValuationCheck, Financial Strength, Growth/Profitability, Risk Factors, Suggested Benchmarks, Beginner Explanation
 
 
 
