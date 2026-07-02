@@ -215,16 +215,95 @@ def analyze_indicators(data, pivot_points):
 
     return analysis
 
-#Sends indicator data to Ollama for AI explanation
-def generate_ollama_analysis(ticker, current_price, indicator_analysis, model_name="llama3.1"):
+# #Sends indicator data to Ollama for AI explanation
+# def generate_ollama_analysis(ticker, current_price, indicator_analysis, model_name="llama3.1"):
+#     prompt = f"""
+# You are helping analyze a stock dashboard.
+
+# Use ONLY the indicator information below.
+# Do not invent company news, earnings, price targets, or fundamentals.
+# Do not give direct buy/sell financial advice.
+
+# Ticker: {ticker}
+# Current price: ${current_price:.2f}
+
+# Trend: {indicator_analysis["Trend"]}
+# Trend reason: {indicator_analysis["Trend Reason"]}
+
+# Momentum: {indicator_analysis["Momentum"]}
+# Momentum reason: {indicator_analysis["Momentum Reason"]}
+
+# VWAP: {indicator_analysis["VWAP"]}
+# VWAP reason: {indicator_analysis["VWAP Reason"]}
+
+# Pivot: {indicator_analysis["Pivot"]}
+# Pivot reason: {indicator_analysis["Pivot Reason"]}
+
+# Volume: {indicator_analysis["Volume"]}
+# Volume reason: {indicator_analysis["Volume Reason"]}
+
+# Write the analysis in this format:
+
+# Overall Technical Read:
+# Bullish Case:
+# Bearish Case:
+# What To Watch:
+# Beginner Explanation:
+
+# Keep it clear, balanced, and not too long.
+# """
+
+#     response = requests.post(
+#         "http://localhost:11434/api/generate",
+#         json={
+#             "model": model_name,
+#             "prompt": prompt,
+#             "stream": False
+#         }
+#     )
+
+#     if response.status_code != 200:
+#         return "AI analysis could not be generated. Make sure Ollama is running."
+
+#     return response.json()["response"]
+
+
+#GROQ PROMPT FUNCTION
+#Sends a prompt to Groq and returns the AI response
+def ask_groq(prompt):
+    try:
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a stock research assistant. Explain technical indicators clearly. Do not give direct buy or sell recommendations."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.3
+        )
+
+        return response.choices[0].message.content
+
+    except Exception as error:
+        return f"AI analysis error: {error}"
+#Creates a prompt using the calculated indicator summary
+def create_indicator_prompt(ticker, current_price, indicator_analysis):
     prompt = f"""
-You are helping analyze a stock dashboard.
+Analyze this stock's technical indicators using only the data provided.
 
-Use ONLY the indicator information below.
-Do not invent company news, earnings, price targets, or fundamentals.
-Do not give direct buy/sell financial advice.
+Do not give a direct buy or sell recommendation.
+Do not invent news, earnings, fundamentals, or price targets.
+Explain both the bullish and bearish case.
+Keep the explanation beginner-friendly and not too long.
 
-Ticker: {ticker}
+Ticker: {ticker.upper()}
 Current price: ${current_price:.2f}
 
 Trend: {indicator_analysis["Trend"]}
@@ -242,56 +321,16 @@ Pivot reason: {indicator_analysis["Pivot Reason"]}
 Volume: {indicator_analysis["Volume"]}
 Volume reason: {indicator_analysis["Volume Reason"]}
 
-Write the analysis in this format:
+Format the answer like this:
 
 Overall Technical Read:
 Bullish Case:
 Bearish Case:
 What To Watch:
 Beginner Explanation:
-
-Keep it clear, balanced, and not too long.
 """
+    return prompt    
 
-    response = requests.post(
-        "http://localhost:11434/api/generate",
-        json={
-            "model": model_name,
-            "prompt": prompt,
-            "stream": False
-        }
-    )
-
-    if response.status_code != 200:
-        return "AI analysis could not be generated. Make sure Ollama is running."
-
-    return response.json()["response"]
-
-
-
-def ask_groq_test():
-    try:
-        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant."
-                },
-                {
-                    "role": "user",
-                    "content": "Say: Groq is connected successfully."
-                }
-            ],
-            temperature=0.2
-        )
-
-        return response.choices[0].message.content
-
-    except Exception as error:
-        return f"AI connection error: {error}"
 
 
 
@@ -575,8 +614,21 @@ def chart_section():
         st.plotly_chart(rsi_chart, use_container_width=True)
 
     #END OF MAIN CHART
+#GROQ AI TECHNICAL ANALYSIS
+    st.subheader("AI Technical Analysis")
 
-    #TECHNICAL INDICATOR SUMMARY
+    if st.button("Generate Groq AI Technical Analysis"):
+        prompt = create_indicator_prompt(
+            ticker=ticker,
+            current_price=current_price,
+            indicator_analysis=indicator_analysis
+        )
+
+        with st.spinner("Generating Groq AI analysis..."):
+            ai_response = ask_groq(prompt)
+
+        st.write(ai_response)
+#Automatic TECHNICAL INDICATOR SUMMARY
     st.subheader("Technical Indicator Summary")
 
     col1, col2, col3 = st.columns(3)
@@ -603,18 +655,18 @@ def chart_section():
         st.metric("Volume", indicator_analysis["Volume"])
         st.caption(indicator_analysis["Volume Reason"])
 
-        #AI TECHNICAL ANALYSIS
-    st.subheader("AI Technical Analysis")
+    #     #OLLAMA AI TECHNICAL ANALYSIS
+    # st.subheader("AI Technical Analysis")
 
-    if st.button("Generate AI Technical Analysis"):
-        with st.spinner("Generating AI analysis..."):
-            ai_analysis = generate_ollama_analysis(
-                ticker=ticker.upper(),
-                current_price=current_price,
-                indicator_analysis=indicator_analysis
-            )
+    # if st.button("Generate AI Technical Analysis"):
+    #     with st.spinner("Generating AI analysis..."):
+    #         ai_analysis = generate_ollama_analysis(
+    #             ticker=ticker.upper(),
+    #             current_price=current_price,
+    #             indicator_analysis=indicator_analysis
+    #         )
 
-        st.write(ai_analysis)
+    #     st.write(ai_analysis)
 
 
 

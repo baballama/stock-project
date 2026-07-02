@@ -93,6 +93,18 @@ Week 3 6/7-6/13
         Added local Ollama AI analysis
             -uses the indicator reader results to generate a bullish and bearish explanation
             -keeps the AI analysis based on data to prevent hallucinations
+    -6/29
+        Researched alternatives to Ollama for AI analysis that could work on the website
+            Landed on Groq
+        Created an API key to connect it to my web app
+            Kept the key hidden using .gitignore and a separate file
+        git commit
+    -7/1   
+        Replaced the old Ollama indicator analysis with Groq so that it works on the web app, not just locally
+            -Same prompt as the Ollama analysis
+        Added a disclosure surrounding AI usage in the readme
+            -git commit
+        Added more to the list of next features
 
 
 
@@ -133,17 +145,19 @@ Current Features
         -uses calculated EMA, VWAP, RSI, Pivot Points, and Volume values to create a simple technical summary
         -shows trend, momentum, VWAP position, pivot position, and volume confirmation
 
-    -Local Ollama AI analysis
+    -Local Ollama AI analysis (REPLACED WITH GROQ)
         -uses Ollama to analyze the stock indicators locally and summarize them 
 
+    -Groq AI analysis
+        -same prompt as Ollama indicator summary except it works online
 
 
 
 
 
 Next Features:
-AI analysis on the actual web app not just local
-AI analysis of recent news
+AI analysis of recent news articles combined with indicator summary
 Portfolio tracker
 Table of contents in code to make reading it easier
+More company data such as average volume, market cap, P/E ratio, earning dates etc.
 
