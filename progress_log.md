@@ -109,7 +109,12 @@ Week 3 6/7-6/13
     -7/2
         Added Company data section and AI analysis check "Current Features" for more details
         git commit
-
+    -7/3
+        Added a separate Ai section at the bottom of the web app
+            -Moved AI analysis buttons into this section
+            -Prevents auto-refresh from erasing the summaries
+    Week 7 7/5-/7/11
+    -7/5
 
 
 Current Features

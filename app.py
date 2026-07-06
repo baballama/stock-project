@@ -13,7 +13,7 @@ from groq import Groq
 st.set_page_config(page_title="Stock Tracker", layout="wide")
 st.title("Stock Tracker")
 st.write("Search for stock tickers:")
-ticker = st.text_input("Enter a stock ticker:", "QBTS")
+ticker = st.text_input("Enter a stock ticker:", "MU")
 #Time period, Chart type, Benchmark selectors
 period = st.selectbox(
     "Choose a time period:",
@@ -595,6 +595,7 @@ def chart_section():
     data["RSI"] = calculate_rsi(data["Close"])
     pivot_points = calculate_pivot_points(data)
 
+    global indicator_analysis
     indicator_analysis = analyze_indicators(data, pivot_points)
 
 #News section
@@ -625,6 +626,7 @@ def chart_section():
 
 #Uses stock history data to retrieve starting and current price and uses that to calculate percent change
     starting_price = data["Close"].iloc[0]
+    global current_price
     current_price = data["Close"].iloc[-1]
     percent_change = ((current_price - starting_price) / starting_price) * 100
 #Displays ticker name, price and percent change
@@ -849,20 +851,7 @@ def chart_section():
         st.plotly_chart(rsi_chart, use_container_width=True)
 
     #END OF MAIN CHART
-#GROQ AI TECHNICAL ANALYSIS
-    st.subheader("AI Technical Analysis")
 
-    if st.button("Generate Groq AI Stock Indicator Analysis"):
-        prompt = create_indicator_prompt(
-            ticker=ticker,
-            current_price=current_price,
-            indicator_analysis=indicator_analysis
-        )
-
-        with st.spinner("Generating Groq AI analysis..."):
-            ai_response = ask_groq(prompt)
-
-        st.write(ai_response)
 #Automatic TECHNICAL INDICATOR SUMMARY
     st.subheader("Technical Indicator Summary")
 
@@ -913,23 +902,12 @@ def chart_section():
     else:
         st.write("Company data is hidden. Select 'Display Company Data' to view it.")
 
-    st.subheader("AI Company Data Analysis")
 
-    if st.button("Generate Groq AI Analysis"):
-        prompt = create_info_prompt(
-            ticker=ticker,
-            company_info=stock.info
-        )
-
-        with st.spinner("Generating Groq AI analysis..."):
-            ai_response = ask_groq(prompt)
-
-        st.write(ai_response)
 #MULTIPLE TICKER COMPARISON
 #Ticker comparison table input
     comp_table_input = st.text_input(
         "Enter tickers to compare, separated by commas:",
-        "QBTS, SMCI, SPCX"
+        "QBTS, SMCI, MU"
     )
     st.subheader("Ticker Comparison Table")
 #Turns input into a list
@@ -1075,3 +1053,40 @@ def chart_section():
 
 #Run chart_section function
 chart_section()
+# GROQ AI TECHNICAL ANALYSIS
+st.subheader("AI Analysis Section:")
+# Create saved storage spots for both AI responses
+if "indicator_ai_response" not in st.session_state:
+    st.session_state.indicator_ai_response = None
+
+if "company_ai_response" not in st.session_state:
+    st.session_state.company_ai_response = None
+
+
+if st.button("Generate AI Stock Indicator Analysis"):
+    prompt = create_indicator_prompt(
+        ticker=ticker,
+        current_price=current_price,
+        indicator_analysis=indicator_analysis
+    )
+
+    with st.spinner("Generating Groq AI indicator analysis..."):
+        st.session_state.indicator_ai_response = ask_groq(prompt)
+
+if st.session_state.indicator_ai_response is not None:
+    st.write("AI Stock Indicator Analysis")
+    st.write(st.session_state.indicator_ai_response)
+
+
+if st.button("Generate AI Company Data Analysis"):
+    prompt = create_info_prompt(
+        ticker=ticker,
+        company_info=stock.info
+    )
+
+    with st.spinner("Generating Groq AI company analysis..."):
+        st.session_state.company_ai_response = ask_groq(prompt)
+
+if st.session_state.company_ai_response is not None:
+    st.write("AI Company Data Analysis")
+    st.write(st.session_state.company_ai_response)
