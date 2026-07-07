@@ -51,9 +51,11 @@ st.caption("Indicators are calculated using the selected chart interval.")
 stock = yf.Ticker(ticker)
 #Changes time between data based on period
 if period == "1d":
-    interval_options = ["1m", "5m", "15m", "30m", "1h"]
+    interval_options = ["1m", "5m", "10m", "30m", "1h"]
 elif period == "5d":
-    interval_options = ["1h", "1d"]
+    interval_options = ["10m","1h", "1d"]
+elif period == "1mo":
+    interval_options = ["30m","1h", "1d"]
 else:
     interval_options = ["1d", "1wk", "1mo"]
 
@@ -72,7 +74,7 @@ auto_refresh = st.checkbox(
 )
 refresh_speed = st.selectbox(
     "Refresh speed:",
-    ["5s", "15s", "30s", "60s"],
+    ["1s","5s", "15s", "30s", "60s"],
     index=2
 )
 #If auto-refresh is checked run chart_section at the refresh speed
@@ -215,59 +217,6 @@ def analyze_indicators(data, pivot_points):
 
     return analysis
 
-# #Sends indicator data to Ollama for AI explanation
-# def generate_ollama_analysis(ticker, current_price, indicator_analysis, model_name="llama3.1"):
-#     prompt = f"""
-# You are helping analyze a stock dashboard.
-
-# Use ONLY the indicator information below.
-# Do not invent company news, earnings, price targets, or fundamentals.
-# Do not give direct buy/sell financial advice.
-
-# Ticker: {ticker}
-# Current price: ${current_price:.2f}
-
-# Trend: {indicator_analysis["Trend"]}
-# Trend reason: {indicator_analysis["Trend Reason"]}
-
-# Momentum: {indicator_analysis["Momentum"]}
-# Momentum reason: {indicator_analysis["Momentum Reason"]}
-
-# VWAP: {indicator_analysis["VWAP"]}
-# VWAP reason: {indicator_analysis["VWAP Reason"]}
-
-# Pivot: {indicator_analysis["Pivot"]}
-# Pivot reason: {indicator_analysis["Pivot Reason"]}
-
-# Volume: {indicator_analysis["Volume"]}
-# Volume reason: {indicator_analysis["Volume Reason"]}
-
-# Write the analysis in this format:
-
-# Overall Technical Read:
-# Bullish Case:
-# Bearish Case:
-# What To Watch:
-# Beginner Explanation:
-
-# Keep it clear, balanced, and not too long.
-# """
-
-#     response = requests.post(
-#         "http://localhost:11434/api/generate",
-#         json={
-#             "model": model_name,
-#             "prompt": prompt,
-#             "stream": False
-#         }
-#     )
-
-#     if response.status_code != 200:
-#         return "AI analysis could not be generated. Make sure Ollama is running."
-
-#     return response.json()["response"]
-
-
 #GROQ PROMPT FUNCTION
 #Sends a prompt to Groq and returns the AI response
 def ask_groq(prompt):
@@ -279,7 +228,7 @@ def ask_groq(prompt):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a stock research assistant. Explain the data clearly. Do not give direct buy or sell recommendations. Ensure that your response uses consistent font."
+                    "content": "You are a stock research assistant. Explain the data clearly. Do not give direct buy or sell recommendations. Ensure that your response uses consistent font and format big numbers so that they are easy to read."
                 },
                 {
                     "role": "user",
@@ -569,38 +518,64 @@ Beginner Explanation:
 """
     return prompt
 
-
-
-
+#Downloads stock data and calculates shared values for the dashboard
 @st.fragment(run_every=run_rate)
-def chart_section():
-
-#Downloads variable stock's history using customization from above
+def data_section():
     data = stock.history(
         period=period,
         interval=interval,
         prepost=extended_hours
     )
-#Prevent crashes if yfinance doesnt return anything
+
     if data.empty:
-        st.error("Data not found.")
+        st.session_state.data = None
         return
-#Calculates EMA, RSI and Pivot Points and stores them in the data variable
+
+    #Calculate indicators
     data["EMA_20"] = data["Close"].ewm(span=20, adjust=False).mean()
     data["EMA_50"] = data["Close"].ewm(span=50, adjust=False).mean()
     data["EMA_200"] = data["Close"].ewm(span=200, adjust=False).mean()
+
     data["Typical_Price"] = (data["High"] + data["Low"] + data["Close"]) / 3
     data["VWAP"] = (data["Typical_Price"] * data["Volume"]).cumsum() / data["Volume"].cumsum()
 
     data["RSI"] = calculate_rsi(data["Close"])
     pivot_points = calculate_pivot_points(data)
-
-    global indicator_analysis
     indicator_analysis = analyze_indicators(data, pivot_points)
 
-#News section
+    #Calculate price values
+    starting_price = data["Close"].iloc[0]
+    current_price = data["Close"].iloc[-1]
+    percent_change = ((current_price - starting_price) / starting_price) * 100
+
+    #Calculate price range values
+    pd_low = data["Low"].min()
+    pd_high = data["High"].max()
+
+    if pd_high != pd_low:
+        range_position = (current_price - pd_low) / (pd_high - pd_low)
+    elif current_price == pd_high:
+        range_position = 1
+    else:
+        range_position = 0.5
+
+    range_position = max(0, min(range_position, 1))
+
+    #Save shared values so other sections can use them
+    st.session_state.data = data
+    st.session_state.pivot_points = pivot_points
+    st.session_state.indicator_analysis = indicator_analysis
+    st.session_state.current_price = current_price
+    st.session_state.percent_change = percent_change
+    st.session_state.pd_low = pd_low
+    st.session_state.pd_high = pd_high
+    st.session_state.range_position = range_position
+
+
+@st.fragment(run_every=run_rate)
+def news_section():
     st.subheader(f"Recent News for {ticker.upper()}")
-#check if news data available, if not display message, if error occurs display error message, else display news items (up to 5)
+
     try:
         news_items = stock.news
 
@@ -612,67 +587,259 @@ def chart_section():
                 title = content.get("title", "No title available")
                 news_summary = content.get("summary", "No summary available")
                 publish_date = content.get("pubDate", "Date not available")
+
                 st.subheader(f"{i}.) {title}")
                 st.caption(f"Published: {publish_date}")
                 st.write(news_summary)
-#If error occurs while loading news data, display warning and error message
+
     except Exception as error:
         st.warning("News data could not be loaded.")
         st.caption(f"Error: {error}")
 
+@st.fragment(run_every=run_rate)
+def indicator_section():
+    if "data" not in st.session_state or st.session_state.data is None:
+        st.error("Data not found.")
+        return
+
+    indicator_analysis = st.session_state.indicator_analysis
+
+    st.subheader("Technical Indicator Summary")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Trend", indicator_analysis["Trend"])
+        st.caption(indicator_analysis["Trend Reason"])
+
+    with col2:
+        st.metric("Momentum", indicator_analysis["Momentum"])
+        st.caption(indicator_analysis["Momentum Reason"])
+
+    with col3:
+        st.metric("VWAP", indicator_analysis["VWAP"])
+        st.caption(indicator_analysis["VWAP Reason"])
+
+    col4, col5 = st.columns(2)
+
+    with col4:
+        st.metric("Pivot", indicator_analysis["Pivot"])
+        st.caption(indicator_analysis["Pivot Reason"])
+
+    with col5:
+        st.metric("Volume", indicator_analysis["Volume"])
+        st.caption(indicator_analysis["Volume Reason"])
+
+@st.fragment(run_every=run_rate)
+def company_section():
+    company_data_display = st.selectbox(
+        "Display/Hide Company data:",
+        ["Display Company Data", "Hide Company Data"]
+    )
+
+    if company_data_display == "Display Company Data":
+        display_company_profile(stock, ticker)
+    else:
+        st.write("Company data is hidden. Select 'Display Company Data' to view it.")
+
+@st.fragment(run_every=run_rate)
+def comparison_section():
+    comp_table_input = st.text_input(
+        "Enter tickers to compare, separated by commas:",
+        "QBTS, SMCI, MU, INTC"
+    )
+
+    st.subheader("Ticker Comparison Table")
+
+    compare_tickers = [
+        symbol.strip().upper()
+        for symbol in comp_table_input.split(",")
+        if symbol.strip() != ""
+    ]
+
+    comparison_chart_data = []
+    comparison_rows = []
+
+    for symbol in compare_tickers:
+        compare_stock = yf.Ticker(symbol)
+
+        compare_data = compare_stock.history(
+            period=period,
+            interval=interval,
+            prepost=extended_hours
+        )
+
+        if compare_data.empty:
+            comparison_rows.append({
+                "Ticker": symbol,
+                "Latest Price": "Data not found",
+                "Period Return": "N/A",
+                "Period Low": "N/A",
+                "Period High": "N/A"
+            })
+            continue
+
+        compare_start = compare_data["Close"].iloc[0]
+        compare_current = compare_data["Close"].iloc[-1]
+        compare_return = ((compare_current - compare_start) / compare_start) * 100
+        compare_low = compare_data["Low"].min()
+        compare_high = compare_data["High"].max()
+
+        comparison_rows.append({
+            "Ticker": symbol,
+            "Latest Price": f"${compare_current:.2f}",
+            "Period Return": f"{compare_return:.2f}%",
+            "Period Low": f"${compare_low:.2f}",
+            "Period High": f"${compare_high:.2f}"
+        })
+
+        comparison_chart_data.append(
+            (symbol, compare_data, compare_return, compare_current)
+        )
+
+    st.table(comparison_rows)
+
+    comparison_chart_data = comparison_chart_data[:6]
+    chart_cols = st.columns(3)
+
+    for index, item in enumerate(comparison_chart_data):
+        symbol, compare_data, compare_return, compare_current = item
+        chart_column = chart_cols[index % 3]
+
+        with chart_column:
+            st.write(f"{symbol}")
+
+            st.metric(
+                label="Latest Price",
+                value=f"${compare_current:.2f}",
+                delta=f"{compare_return:.2f}%"
+            )
+
+            mini_chart = px.line(
+                compare_data,
+                x=compare_data.index,
+                y="Close",
+                title=f"{symbol} Price Chart"
+            )
+
+            mini_chart.update_layout(
+                height=250,
+                margin=dict(l=10, r=10, t=40, b=10),
+                showlegend=False,
+                xaxis_title="",
+                yaxis_title=""
+            )
+
+            st.plotly_chart(mini_chart, use_container_width=True)
+
+@st.fragment(run_every=run_rate)
+def benchmark_section():
+    if "data" not in st.session_state or st.session_state.data is None:
+        st.error("Data not found.")
+        return
+
+    data = st.session_state.data
+    percent_change = st.session_state.percent_change
+
+    if show_benchmark:
+        benchmark_stock = yf.Ticker(benchmark_symbols[benchmark])
+
+        benchmark_data = benchmark_stock.history(
+            period=period,
+            interval=interval,
+            prepost=extended_hours
+        )
+
+        if benchmark_data.empty:
+            st.warning("Benchmark data not found.")
+            return
+
+        stock_percent = ((data["Close"] - data["Close"].iloc[0]) / data["Close"].iloc[0]) * 100
+        benchmark_percent = ((benchmark_data["Close"] - benchmark_data["Close"].iloc[0]) / benchmark_data["Close"].iloc[0]) * 100
+
+        benchmark_return = benchmark_percent.iloc[-1]
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+            st.metric(
+                label=f"{benchmark} Return",
+                value=f"{benchmark_return:.2f}%"
+            )
+
+        with c2:
+            st.metric(
+                label=f"{ticker.upper()} Return",
+                value=f"{percent_change:.2f}%"
+            )
+
+        st.subheader(f"{ticker.upper()} vs {benchmark}")
+
+        comparison_chart = go.Figure()
+
+        comparison_chart.add_trace(
+            go.Scatter(
+                x=data.index,
+                y=stock_percent,
+                mode="lines",
+                name=ticker.upper()
+            )
+        )
+
+        comparison_chart.add_trace(
+            go.Scatter(
+                x=benchmark_data.index,
+                y=benchmark_percent,
+                mode="lines",
+                name=benchmark
+            )
+        )
+
+        comparison_chart.update_layout(
+            title=f"Percent Return Comparison: {ticker.upper()} vs {benchmark}",
+            xaxis_title="Date / Time",
+            yaxis_title="Percent Return"
+        )
+
+        st.plotly_chart(comparison_chart, use_container_width=True)
 
 
+@st.fragment(run_every=run_rate)
+def chart_section():
+    #Stops the section if data has not loaded yet
+    if "data" not in st.session_state or st.session_state.data is None:
+        st.error("Data not found.")
+        return
 
+    #Reads shared values created by data_section()
+    data = st.session_state.data
+    pivot_points = st.session_state.pivot_points
+    indicator_analysis = st.session_state.indicator_analysis
+    current_price = st.session_state.current_price
+    percent_change = st.session_state.percent_change
+    pd_low = st.session_state.pd_low
+    pd_high = st.session_state.pd_high
+    range_position = st.session_state.range_position
 
-#Uses stock history data to retrieve starting and current price and uses that to calculate percent change
-    starting_price = data["Close"].iloc[0]
-    global current_price
-    current_price = data["Close"].iloc[-1]
-    percent_change = ((current_price - starting_price) / starting_price) * 100
 #Displays ticker name, price and percent change
     st.metric(
     label=f"{ticker.upper()} Current Share Price",
     value=f"${current_price:.3f}",
     delta=f"{percent_change:.2f}%",
     )
-# Calculate the lowest and highest prices during the selected period
-    pd_low = data["Low"].min()
-    pd_high = data["High"].max()
-# Calculate where the current price sits between the period low and high
-    if pd_high != pd_low:
-        range_position = (current_price - pd_low) / (pd_high - pd_low)
-    elif current_price ==pd_high:
-        range_position = 1
-    else:
-        range_position = 0.5
-# Keep the position between 0 and 1 so the progress bar does not break
-    range_position = max(0, min(range_position, 1))
-
     st.write(f"Price Range throughout {period}")
-
     st.progress(range_position)
-
     col_low, col_current, col_high = st.columns(3)
-
     with col_low:
         st.caption(f"Low: ${pd_low:.2f}")
-
     with col_current:
         st.caption(f"Current: ${current_price:.2f}")
-
     with col_high:
         st.caption(f"High: ${pd_high:.2f}")
 
-
-
-
-
-
         #MAIN CHART FOR THE SELECTED TICKER
-
     #Checks if volume bars are selected
     show_volume = "Volume Bars" in stock_indicators
-
     #Creates 2-row chart if volume is selected
     if show_volume:
         chart = make_subplots(
@@ -685,7 +852,6 @@ def chart_section():
     #Creates normal chart if volume is not selected
     else:
         chart = go.Figure()
-
     #Creates line chart if selected
     if chart_type == "Line Chart":
         price_trace = go.Scatter(
@@ -694,7 +860,6 @@ def chart_section():
             mode="lines",
             name="Close"
         )
-
     #Creates candlestick chart if selected
     else:
         price_trace = go.Candlestick(
@@ -705,20 +870,17 @@ def chart_section():
             close=data["Close"],
             name="Candlestick"
         )
-
     #Adds price chart to correct chart row
     if show_volume:
         chart.add_trace(price_trace, row=1, col=1)
     else:
         chart.add_trace(price_trace)
-
     #Matches indicator names to data columns
     ema_choices = {
         "EMA 20": "EMA_20",
         "EMA 50": "EMA_50",
         "EMA 200": "EMA_200"
     }
-
     #Adds selected EMA lines
     for indicator_name, column_name in ema_choices.items():
         if indicator_name in stock_indicators:
@@ -851,242 +1013,54 @@ def chart_section():
         st.plotly_chart(rsi_chart, use_container_width=True)
 
     #END OF MAIN CHART
-
-#Automatic TECHNICAL INDICATOR SUMMARY
-    st.subheader("Technical Indicator Summary")
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric("Trend", indicator_analysis["Trend"])
-        st.caption(indicator_analysis["Trend Reason"])
-
-    with col2:
-        st.metric("Momentum", indicator_analysis["Momentum"])
-        st.caption(indicator_analysis["Momentum Reason"])
-
-    with col3:
-        st.metric("VWAP", indicator_analysis["VWAP"])
-        st.caption(indicator_analysis["VWAP Reason"])
-
-    col4, col5 = st.columns(2)
-
-    with col4:
-        st.metric("Pivot", indicator_analysis["Pivot"])
-        st.caption(indicator_analysis["Pivot Reason"])
-
-    with col5:
-        st.metric("Volume", indicator_analysis["Volume"])
-        st.caption(indicator_analysis["Volume Reason"])
-
-    #     #OLLAMA AI TECHNICAL ANALYSIS
-    # st.subheader("AI Technical Analysis")
-
-    # if st.button("Generate AI Technical Analysis"):
-    #     with st.spinner("Generating AI analysis..."):
-    #         ai_analysis = generate_ollama_analysis(
-    #             ticker=ticker.upper(),
-    #             current_price=current_price,
-    #             indicator_analysis=indicator_analysis
-    #         )
-
-    #     st.write(ai_analysis)
-#run/stop company data function
-    company_data_display = st.selectbox(
-        "Display/Hide Company data:",
-        ["Display Company Data","Hide Company Data"]
-    )
-
-    if company_data_display == "Display Company Data":
-        display_company_profile(stock, ticker)
-    else:
-        st.write("Company data is hidden. Select 'Display Company Data' to view it.")
-
-
-#MULTIPLE TICKER COMPARISON
-#Ticker comparison table input
-    comp_table_input = st.text_input(
-        "Enter tickers to compare, separated by commas:",
-        "QBTS, SMCI, MU"
-    )
-    st.subheader("Ticker Comparison Table")
-#Turns input into a list
-    compare_tickers = [
-        symbol.strip().upper()
-        for symbol in comp_table_input.split(",")
-        if symbol.strip() != ""
-    ]
-    comparison_chart_data = []
-    comparison_rows = []
-
-    for symbol in compare_tickers:
-        compare_stock = yf.Ticker(symbol)
-
-        compare_data = compare_stock.history(
-            period=period,
-            interval=interval,
-            prepost=extended_hours
-        )
-
-        if compare_data.empty:
-            comparison_rows.append({
-                "Ticker": symbol,
-                "Latest Price": "Data not found",
-                "Period Return": "N/A",
-                "Period Low": "N/A",
-                "Period High": "N/A"
-            })
-            continue
-
-        compare_start = compare_data["Close"].iloc[0]
-        compare_current = compare_data["Close"].iloc[-1]
-        compare_return = ((compare_current - compare_start) / compare_start) * 100
-        compare_low = compare_data["Low"].min()
-        compare_high = compare_data["High"].max()
-
-        comparison_rows.append({
-            "Ticker": symbol,
-            "Latest Price": f"${compare_current:.2f}",
-            "Period Return": f"{compare_return:.2f}%",
-            "Period Low": f"${compare_low:.2f}",
-            "Period High": f"${compare_high:.2f}"
-        })
-        comparison_chart_data.append(
-            (symbol, compare_data, compare_return, compare_current)
-        )
-
-    st.table(comparison_rows)
-# Limit the number of charts to 6
-    comparison_chart_data = comparison_chart_data[:6]
-
-# Create 3 columns so charts appear side by side
-    chart_cols = st.columns(3)
-
-    for index, item in enumerate(comparison_chart_data):
-    #Unpacks ticker chart info from tuple into separate variables    
-        symbol, compare_data, compare_return, compare_current = item
- # Choose which column the chart should go into
-        chart_column = chart_cols[index % 3]
-#
-        with chart_column:
-            st.write(f"{symbol}")
-            st.metric(
-                label="Latest Price",
-                value=f"${compare_current:.2f}",
-                delta=f"{compare_return:.2f}%"
-            )
-            mini_chart = px.line(
-                compare_data,
-                x=compare_data.index,
-                y="Close",
-                title=f"{symbol} Price Chart"
-            )
-            mini_chart.update_layout(
-                height=250,
-                margin=dict(l=10, r=10, t=40, b=10),
-                showlegend=False,
-                xaxis_title="",
-                yaxis_title=""
-            )
-            st.plotly_chart(mini_chart, use_container_width=True)
-#END OF MULTIPLE TICKER COMPARISON
-
-
-#BENCHMARK     
-#If benchmark option selected create yfinance object from selected benchmark and gather its data, check for empty data    
-    if show_benchmark:
-        benchmark_stock = yf.Ticker(benchmark_symbols[benchmark])
-        benchmark_data = benchmark_stock.history(
-            period=period,
-            interval=interval,
-            prepost=extended_hours
-        )
-        if benchmark_data.empty:
-            st.warning("Benchmark data not found.")
-            return
-#Converts the share price into a percentage change startting from 0% so that both benchmark and stock can be graphed on the same chart
-        stock_percent = ((data["Close"] - data["Close"].iloc[0]) / data["Close"].iloc[0]) * 100    
-        benchmark_percent = ((benchmark_data["Close"] - benchmark_data["Close"].iloc[0]) / benchmark_data["Close"].iloc[0]) * 100
-#Overall percent change for benchmark stock from start to end of selected period
-        benchmark_return = benchmark_percent.iloc[-1]
-#Displays percentage change for both stock and benchmark (side by side))
-        c1,c2=st.columns(2)
-        with c1:
-            st.metric(
-            label=f"{benchmark} Return",
-            value=f"{benchmark_return:.2f}%"
-            )
-        with c2:
-            st.metric(
-            label=f"{ticker.upper()} Return",
-            value=f"{percent_change:.2f}%",
-            )
-        st.subheader(f"{ticker.upper()} vs {benchmark}")
-#Create plotly figure
-        comparison_chart = go.Figure()
-#Adds separate line for both stock and benchmark
-        comparison_chart.add_trace(
-            go.Scatter(
-                x=data.index,
-                y=stock_percent,
-                mode="lines",
-                name=ticker.upper()
-            )
-        )
-        comparison_chart.add_trace(
-            go.Scatter(
-                x=benchmark_data.index,
-                y=benchmark_percent,
-                mode="lines",
-                name=benchmark
-            )
-        )
-#Labels graph
-        comparison_chart.update_layout(
-            title=f"Percent Return Comparison: {ticker.upper()} vs {benchmark}",
-            xaxis_title="Date / Time",
-            yaxis_title="Percent Return"
-        )
-
-        st.plotly_chart(comparison_chart, use_container_width=True)    
-#END OF BENCHMARK SECTION
-
-#Run chart_section function
-chart_section()
 # GROQ AI TECHNICAL ANALYSIS
-st.subheader("AI Analysis Section:")
-# Create saved storage spots for both AI responses
-if "indicator_ai_response" not in st.session_state:
-    st.session_state.indicator_ai_response = None
+def ai_section():
+    st.subheader("AI Analysis Section:")
+    if "data" not in st.session_state or st.session_state.data is None:
+        st.warning("Stock data is not ready yet.")
+        return
+    # Create saved storage spots for both AI responses
+    if "indicator_ai_response" not in st.session_state:
+        st.session_state.indicator_ai_response = None
 
-if "company_ai_response" not in st.session_state:
-    st.session_state.company_ai_response = None
-
-
-if st.button("Generate AI Stock Indicator Analysis"):
-    prompt = create_indicator_prompt(
-        ticker=ticker,
-        current_price=current_price,
-        indicator_analysis=indicator_analysis
-    )
-
-    with st.spinner("Generating Groq AI indicator analysis..."):
-        st.session_state.indicator_ai_response = ask_groq(prompt)
-
-if st.session_state.indicator_ai_response is not None:
-    st.write("AI Stock Indicator Analysis")
-    st.write(st.session_state.indicator_ai_response)
+    if "company_ai_response" not in st.session_state:
+        st.session_state.company_ai_response = None
 
 
-if st.button("Generate AI Company Data Analysis"):
-    prompt = create_info_prompt(
-        ticker=ticker,
-        company_info=stock.info
-    )
+    if st.button("Generate AI Stock Indicator Analysis"):
+        prompt = create_indicator_prompt(
+            ticker=ticker,
+            current_price=st.session_state.current_price,
+            indicator_analysis=st.session_state.indicator_analysis
+        )
 
-    with st.spinner("Generating Groq AI company analysis..."):
-        st.session_state.company_ai_response = ask_groq(prompt)
+        with st.spinner("Generating Groq AI indicator analysis..."):
+            st.session_state.indicator_ai_response = ask_groq(prompt)
 
-if st.session_state.company_ai_response is not None:
-    st.write("AI Company Data Analysis")
-    st.write(st.session_state.company_ai_response)
+    if st.session_state.indicator_ai_response is not None:
+        st.write("AI Stock Indicator Analysis")
+        st.write(st.session_state.indicator_ai_response)
+
+
+    if st.button("Generate AI Company Data Analysis"):
+        prompt = create_info_prompt(
+            ticker=ticker,
+            company_info=stock.info
+        )
+
+        with st.spinner("Generating Groq AI company analysis..."):
+            st.session_state.company_ai_response = ask_groq(prompt)
+
+    if st.session_state.company_ai_response is not None:
+        st.write("AI Company Data Analysis")
+        st.write(st.session_state.company_ai_response)
+
+#Run section functions
+data_section()
+news_section()
+chart_section()
+ai_section()
+indicator_section()
+company_section()
+comparison_section()
+benchmark_section()

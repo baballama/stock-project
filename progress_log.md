@@ -115,6 +115,16 @@ Week 3 6/7-6/13
             -Prevents auto-refresh from erasing the summaries
     Week 7 7/5-/7/11
     -7/5
+        Fixed an issue where generating one AI analysis would remove the other
+        Updated progress log
+            -Added more next features 
+        git commit
+    -7/6
+        Shifted focus of the project to be a beginner friendly stock tracker that helps you learn concepts such as stock indicators
+            -Will add beginner friendly explanations throughout the website
+        Reorganized all of the code into separate sections instead of one big refreshing chart_section
+            -Allows me to organize layout easier in the future by letting me make different sections auto-refresh or not
+        git commit
 
 
 Current Features
@@ -165,10 +175,12 @@ Current Features
     -Company Data AI (Groq) Analysis Feature
         Summarizes all information from company data in a beginner friendly way
         -Answers in this format: Company overview, What Company does, Industry/Sector Context, ValuationCheck, Financial Strength, Growth/Profitability, Risk Factors, Suggested Benchmarks, Beginner Explanation
-
+        -Separate AI section at the bottom of the web app which includes the Groq Analysis
 
 
 Next Features:
+Make separate sections, not just one big auto refreshing chart_section() 
+Add option to add starting and end date for data retrieval
 AI analysis of recent news articles combined with indicator summary
 Portfolio tracker
 Table of contents in code to make reading it easier
