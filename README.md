@@ -3,7 +3,7 @@ Stock Tracker Web App Summer Project
 This is my summer project im working on to become more proficient in python and programming in general as a highschooler.
 The project synthesizes 2 passions of mine, investing and coding, by helping me improve my understanding of each.
 
-The end goal is to build a functional web app that helps users learn how to track stocks, watch price movement, compare performance, and make observations. (Something similar to trading view but more beginner friendly.)
+The end goal is to build a functional web app that helps users learn how to track stocks, watch price movement, compare performance, and make observations. The goal is to build a web app similar to tradingview but with beginner friendly features to help new traders.
 
 By the end of summer, I plan to have at least these basic functions:
 
@@ -22,10 +22,10 @@ By the end of summer, I plan to have at least these basic functions:
 - An AI assistant/analyst
 
 
-*Current Features
+*Current Features (Recommended read)
     -tracked in progress_log
 
-Next Steps/features
+Next Steps/features (Recommended read)
     -tracked in progress_log
 *Tools used-
     Streamlit,
@@ -36,7 +36,7 @@ Next Steps/features
     github,
     plotly,
     vs code,
-    ollama
+    groq
 
 AI Assistance Disclosure
 

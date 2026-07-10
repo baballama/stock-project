@@ -13,7 +13,7 @@ from groq import Groq
 st.set_page_config(page_title="Stock Tracker", layout="wide")
 st.title("Stock Tracker")
 st.write("Search for stock tickers:")
-ticker = st.text_input("Enter a stock ticker:", "MU")
+ticker = st.text_input("Enter a stock ticker:", "QBTS")
 #Time period, Chart type, Benchmark selectors
 period = st.selectbox(
     "Choose a time period:",
@@ -51,11 +51,11 @@ st.caption("Indicators are calculated using the selected chart interval.")
 stock = yf.Ticker(ticker)
 #Changes time between data based on period
 if period == "1d":
-    interval_options = ["1m", "5m", "10m", "30m", "1h"]
+    interval_options = ["1m", "5m", "15m", "30m", "1h"]
 elif period == "5d":
-    interval_options = ["10m","1h", "1d"]
+    interval_options = ["1h", "1d"]
 elif period == "1mo":
-    interval_options = ["30m","1h", "1d"]
+    interval_options = ["1h", "1d"]
 else:
     interval_options = ["1d", "1wk", "1mo"]
 
@@ -97,8 +97,6 @@ def calculate_rsi(close_prices, window=14):
     rsi = 100 - (100 / (1 + rs))
 
     return rsi
-
-
 def calculate_pivot_points(data):
     if len(data) < 2:
         return None
@@ -216,8 +214,6 @@ def analyze_indicators(data, pivot_points):
         analysis["Volume Reason"] = "Current volume is not strongly above the recent average."
 
     return analysis
-
-#GROQ PROMPT FUNCTION
 #Sends a prompt to Groq and returns the AI response
 def ask_groq(prompt):
     try:
@@ -279,7 +275,6 @@ What To Watch:
 Beginner Explanation:
 """
     return prompt    
-
 #Formats large numbers like market cap into readable text
 def format_large_number(number):
     if number is None:
@@ -299,7 +294,6 @@ def format_large_number(number):
 
     except:
         return "N/A"
-
 #Formats percentages like dividend yield into readable text
 def format_percent(number):
     if number is None:
@@ -310,7 +304,6 @@ def format_percent(number):
 
     except:
         return "N/A"
-
 #Suggests a benchmark based on the company's sector
 def suggest_benchmark(sector):
     if sector is None:
@@ -340,7 +333,6 @@ def suggest_benchmark(sector):
         return "S&P 500"
     else:
         return "S&P 500"
-
 #Displays company profile and fundamental data from yfinance
 def display_company_profile(stock, ticker):
     try:
@@ -412,8 +404,6 @@ def display_company_profile(stock, ticker):
     except Exception as error:
         st.warning("Company profile could not be loaded.")
         st.caption(f"Error: {error}")
-
-
 #Creates a prompt using the calculated indicator summary
 #Creates a prompt for AI company profile analysis
 def create_info_prompt(ticker, company_info):
@@ -517,7 +507,19 @@ Good Benchmark To Compare Against:
 Beginner Explanation:
 """
     return prompt
+def remove_chart_gaps(fig):
+    chart_rangebreaks = [
+        dict(bounds=["sat", "mon"])
+    ]
 
+    if not extended_hours and interval in ["1m", "5m", "10m", "15m", "30m", "1h"]:
+        chart_rangebreaks.append(
+            dict(bounds=[16, 9.5], pattern="hour")
+        )
+
+    fig.update_xaxes(rangebreaks=chart_rangebreaks)
+
+    return fig
 #Downloads stock data and calculates shared values for the dashboard
 @st.fragment(run_every=run_rate)
 def data_section():
@@ -729,7 +731,7 @@ def comparison_section():
                 xaxis_title="",
                 yaxis_title=""
             )
-
+            mini_chart = remove_chart_gaps(mini_chart)
             st.plotly_chart(mini_chart, use_container_width=True)
 
 @st.fragment(run_every=run_rate)
@@ -800,9 +802,8 @@ def benchmark_section():
             xaxis_title="Date / Time",
             yaxis_title="Percent Return"
         )
-
+        comparison_chart = remove_chart_gaps(comparison_chart)
         st.plotly_chart(comparison_chart, use_container_width=True)
-
 
 @st.fragment(run_every=run_rate)
 def chart_section():
@@ -967,7 +968,7 @@ def chart_section():
         yaxis_title="Price",
         height=700
     )
-
+    chart = remove_chart_gaps(chart)
     #Displays main chart
     st.plotly_chart(chart, use_container_width=True)
 
@@ -1010,6 +1011,7 @@ def chart_section():
         )
 
         #Displays RSI chart
+        rsi_chart = remove_chart_gaps(rsi_chart)
         st.plotly_chart(rsi_chart, use_container_width=True)
 
     #END OF MAIN CHART

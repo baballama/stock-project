@@ -125,7 +125,11 @@ Week 3 6/7-6/13
         Reorganized all of the code into separate sections instead of one big refreshing chart_section
             -Allows me to organize layout easier in the future by letting me make different sections auto-refresh or not
         git commit
-
+    -7/7
+        -updated README
+        -started working on removing gaps in the charts to make the charts look more professional
+    -7/10
+        -removed gaps for weekends and pre/postmarket (when its disabled) in all charts
 
 Current Features
     -Basic stock tracking features
@@ -179,10 +183,11 @@ Current Features
 
 
 Next Features:
-Make separate sections, not just one big auto refreshing chart_section() 
+Make comparison charts one chart with multiple lines
+Add beginner friendly explanations through the web app
+Add AI assistant that answers questions surrounding investing
 Add option to add starting and end date for data retrieval
 AI analysis of recent news articles combined with indicator summary
 Portfolio tracker
-Table of contents in code to make reading it easier
 More company data such as average volume, market cap, P/E ratio, earning dates etc.
 
