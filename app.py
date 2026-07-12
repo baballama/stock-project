@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from plotly.subplots import make_subplots
 from groq import Groq
 
@@ -15,10 +15,30 @@ st.title("Stock Tracker")
 st.write("Search for stock tickers:")
 ticker = st.text_input("Enter a stock ticker:", "QBTS")
 #Time period, Chart type, Benchmark selectors
-period = st.selectbox(
+date_mode = st.selectbox(
+    "Choose date mode:",
+    ["Preset Period", "Custom Date Range"]
+)
+period = st.selectbox(    
     "Choose a time period:",
     ["1d", "5d", "1mo", "3mo", "6mo", "1y", "5y"]
 )
+if date_mode == "Custom Date Range":
+    start_date = st.date_input(
+        "Start date:",
+        datetime.today().date() - timedelta(days=30)
+    )
+
+    end_date = st.date_input(
+        "End date:",
+        datetime.today().date()
+    )
+
+    if start_date > end_date:
+        st.warning("Start date cannot be after end date.")
+else:
+    start_date = None
+    end_date = None
 chart_type = st.selectbox(
     "Choose a chart type:",
     ["Candlestick Chart","Line Chart"]
@@ -49,15 +69,26 @@ stock_indicators = st.multiselect(
 st.caption("Indicators are calculated using the selected chart interval.")
 #Turns ticker into yfinance object
 stock = yf.Ticker(ticker)
-#Changes time between data based on period
-if period == "1d":
-    interval_options = ["1m", "5m", "15m", "30m", "1h"]
-elif period == "5d":
-    interval_options = ["1h", "1d"]
-elif period == "1mo":
-    interval_options = ["1h", "1d"]
+#Changes time between data based on period or custom date range
+if date_mode == "Custom Date Range":
+    custom_range_days = (end_date - start_date).days
+
+    if custom_range_days <= 7:
+        interval_options = ["1m", "5m", "15m", "30m", "1h"]
+    elif custom_range_days <= 30:
+        interval_options = ["30m", "1h", "1d"]
+    else:
+        interval_options = ["1d", "1wk", "1mo"]
+
 else:
-    interval_options = ["1d", "1wk", "1mo"]
+    if period == "1d":
+        interval_options = ["1m", "5m", "15m", "30m", "1h"]
+    elif period == "5d":
+        interval_options = ["15m", "30m", "1h", "1d"]
+    elif period == "1mo":
+        interval_options = ["30m", "1h", "1d"]
+    else:
+        interval_options = ["1d", "1wk", "1mo"]
 
 #Select time intervals, pre/post market data, auto-refresh and refresh rate
 interval = st.selectbox(
@@ -520,14 +551,30 @@ def remove_chart_gaps(fig):
     fig.update_xaxes(rangebreaks=chart_rangebreaks)
 
     return fig
-#Downloads stock data and calculates shared values for the dashboard
-@st.fragment(run_every=run_rate)
-def data_section():
-    data = stock.history(
+#Downloads stock history using either preset period or custom date range
+def get_stock_history(stock_object):
+    if date_mode == "Custom Date Range":
+        if start_date > end_date:
+            return pd.DataFrame()
+
+        return stock_object.history(
+            start=start_date,
+            end=end_date + timedelta(days=1),
+            interval=interval,
+            prepost=extended_hours
+        )
+
+    return stock_object.history(
         period=period,
         interval=interval,
         prepost=extended_hours
     )
+
+
+#Downloads stock data and calculates shared values for the dashboard
+@st.fragment(run_every=run_rate)
+def data_section():
+    data = get_stock_history(stock)
 
     if data.empty:
         st.session_state.data = None
@@ -572,8 +619,6 @@ def data_section():
     st.session_state.pd_low = pd_low
     st.session_state.pd_high = pd_high
     st.session_state.range_position = range_position
-
-
 @st.fragment(run_every=run_rate)
 def news_section():
     st.subheader(f"Recent News for {ticker.upper()}")
@@ -665,11 +710,7 @@ def comparison_section():
     for symbol in compare_tickers:
         compare_stock = yf.Ticker(symbol)
 
-        compare_data = compare_stock.history(
-            period=period,
-            interval=interval,
-            prepost=extended_hours
-        )
+        compare_data = get_stock_history(compare_stock)
 
         if compare_data.empty:
             comparison_rows.append({
@@ -746,11 +787,7 @@ def benchmark_section():
     if show_benchmark:
         benchmark_stock = yf.Ticker(benchmark_symbols[benchmark])
 
-        benchmark_data = benchmark_stock.history(
-            period=period,
-            interval=interval,
-            prepost=extended_hours
-        )
+        benchmark_data = get_stock_history(benchmark_stock)
 
         if benchmark_data.empty:
             st.warning("Benchmark data not found.")
@@ -828,8 +865,11 @@ def chart_section():
     value=f"${current_price:.3f}",
     delta=f"{percent_change:.2f}%",
     )
-    st.write(f"Price Range throughout {period}")
-    st.progress(range_position)
+    if date_mode == "Custom Date Range":
+        st.write(f"Price Range from {start_date} to {end_date}")
+    else:
+        st.write(f"Price Range throughout {period}")
+        st.progress(range_position)
     col_low, col_current, col_high = st.columns(3)
     with col_low:
         st.caption(f"Low: ${pd_low:.2f}")

@@ -130,6 +130,9 @@ Week 3 6/7-6/13
         -started working on removing gaps in the charts to make the charts look more professional
     -7/10
         -removed gaps for weekends and pre/postmarket (when its disabled) in all charts
+    -7/11
+        -added alternative option to select specific start/end date for data retrieval
+            Makes it so users can customize what time period they see in order to allow them to track price movement from specific dates such as earnings
 
 Current Features
     -Basic stock tracking features
@@ -181,6 +184,8 @@ Current Features
         -Answers in this format: Company overview, What Company does, Industry/Sector Context, ValuationCheck, Financial Strength, Growth/Profitability, Risk Factors, Suggested Benchmarks, Beginner Explanation
         -Separate AI section at the bottom of the web app which includes the Groq Analysis
 
+    -Alternative option to select specific start/end date for data retrieval
+        Makes it so users can customize what time period they see in order to allow them to track price movement from specific dates such as earnings
 
 Next Features:
 Make comparison charts one chart with multiple lines
