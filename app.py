@@ -11,7 +11,7 @@ from groq import Groq
 
 #Ticker Input
 st.set_page_config(page_title="Stock Tracker", layout="wide")
-st.title("Market Mentor")
+st.title("Stock Scholar")
 st.caption("A beginner-friendly stock dashboard with AI analysis and investing education.")
 with st.expander("Dashboard Settings", expanded=False):
     st.write("Search for stock tickers:")
@@ -1256,3 +1256,9 @@ st.divider()
 benchmark_section()
 st.divider()
 investing_chatbot_section()
+st.divider()
+github_url = "https://github.com/baballama/stock-project"
+st.link_button(
+    "GitHub Repository",
+    github_url
+)

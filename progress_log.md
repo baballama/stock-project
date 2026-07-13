@@ -138,13 +138,18 @@ Week 3 6/7-6/13
 
     Week 8
     -7/12&7/13
-        -added an AI chatbot assistant that helps users learn investing terms and cocnepts
+        -added an AI chatbot assistant that helps users learn investing terms and concepts
             -has suggested questions so users have a better idea of what to ask
             -
         -made many sections have show/hide button to make the website less crowded
             news sections, comparison section, company profile section 
         -added dividers between different sections to make it less overwhelming and more organized
+        -moved benchmark options into its section
         git commit
+    Changed name from Market Mentor to Stock Scholar
+        new link, stockscholar.streamlit.app
+        removed old website link file
+        added github repo link to website
 Current Features
     -Basic stock tracking features
         -Ticker input, Time period selector, Time between prices selector
@@ -198,7 +203,10 @@ Current Features
     -Alternative option to select specific start/end date for data retrieval
         Makes it so users can customize what time period they see in order to allow them to track price movement from specific dates such as earnings
 
+    AI chatbot assistant that helps users learn investing terms and concepts
+        -has suggested questions so users have a better idea of what to ask
 Next Features:
+Add more stock indicators
 Make comparison charts one chart with multiple lines
 Add beginner friendly explanations through the web app
 Add AI assistant that answers questions surrounding investing
