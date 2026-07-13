@@ -1,25 +1,11 @@
-Stock Tracker Web App Summer Project
+Stock Tracker Web App Summer Project (Stock Scholar)
 
-This is my summer project im working on to become more proficient in python and programming in general as a highschooler.
-The project synthesizes 2 passions of mine, investing and coding, by helping me improve my understanding of each.
+*link: stockscholar.streamlit.app
 
-The end goal is to build a functional web app that helps users learn how to track stocks, watch price movement, compare performance, and make observations. The goal is to build a web app similar to tradingview but with beginner friendly features to help new traders.
+This is my passion project im working on to become more proficient in python and programming in general as a highschooler.
+The project synthesizes 2 passions of mine, investing and coding, helping me improve my skills in each.
 
-By the end of summer, I plan to have at least these basic functions:
-
-- A stock ticker input for users
-- Real stock data pulled using yfinance
-- Interactive price charts showing stock movement over different time periods
-- A time period selector, such as 1 month, 3 months, 6 months, 1 year, and 5 years
-- Basic return calculations to show how much a stock has gained or lost
-- A volatility/risk section to show how much the stock price changes over time
-- A comparison feature where users can compare multiple stocks
-- A benchmark comparison against the S&P 500
-- A simple portfolio tracker where users can enter stocks they own and see total performance
-- A cleaner user interface with organized sections, charts, and explanations
-- A progress log showing how the project improved over time
-- A deployed version of the app that other people can access online
-- An AI assistant/analyst
+The end goal is to build a functional web app that helps users learn how to track stocks, watch price movement, compare performance, and make observations. The goal is to build a stock tracker app like trading view but with beginner friendly features like an AI assistant to help new traders learn. Additionally, I hope to turn this project into something impactful by getting more users and using their input to further improve the web app. 
 
 
 *Current Features (Recommended read)
