@@ -43,23 +43,8 @@ chart_type = st.selectbox(
     "Choose a chart type:",
     ["Candlestick Chart","Line Chart"]
 )
-benchmark = st.selectbox(
-    "Choose a benchmark to compare against:",
-    ["S&P 500", "Nasdaq Composite", "Dow Jones", "Russell 2000"]
-)
 
-#Benchmark name-> Ticker (dict)
-benchmark_symbols = {
-    "S&P 500": "^GSPC",
-    "Nasdaq Composite": "^IXIC",
-    "Dow Jones": "^DJI",
-    "Russell 2000": "^RUT"
-}
-#Show benchmark t/f
-show_benchmark = st.checkbox(
-    "Show benchmark comparison chart",
-    value=False
-)
+
 #Stock indicator dropdown selector
 stock_indicators = st.multiselect(
     "Choose stock indicators to display:",
@@ -389,8 +374,6 @@ def display_company_profile(stock, ticker):
 
         suggested_benchmark = suggest_benchmark(sector)
 
-        st.subheader("Company Profile")
-
         st.write(f"### {company_name}")
 
         col1, col2, col3 = st.columns(3)
@@ -569,7 +552,42 @@ def get_stock_history(stock_object):
         interval=interval,
         prepost=extended_hours
     )
+#AI tutor for explaining investing and market concepts
+def ask_investing_tutor(user_question):
+    try:
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """
+You are an investing education assistant inside a beginner-friendly stock dashboard.
+
+Your job:
+- Explain investing, stock market, company, and technical-analysis concepts clearly.
+- Use beginner-friendly language.
+- Give examples when helpful.
+- Explain terms like P/E, EPS, market cap, RSI, VWAP, EMA, volume, revenue, profit, debt, cash flow, and benchmarks.
+- Do not give direct buy, sell, or hold recommendations.
+- Do not tell the user what stock to buy.
+- If the user asks for advice, explain what factors they should research instead.
+- Keep responses clear and not too long.
+"""
+                },
+                {
+                    "role": "user",
+                    "content": user_question
+                }
+            ],
+            temperature=0.3
+        )
+
+        return response.choices[0].message.content
+
+    except Exception as error:
+        return f"AI tutor error: {error}"
 
 #Downloads stock data and calculates shared values for the dashboard
 @st.fragment(run_every=run_rate)
@@ -623,6 +641,16 @@ def data_section():
 def news_section():
     st.subheader(f"Recent News for {ticker.upper()}")
 
+    show_news = st.checkbox(
+        "Show news",
+        value=False,
+        key="show_news"
+    )
+
+    if not show_news:
+        st.caption("News is hidden.")
+        return
+
     try:
         news_items = stock.news
 
@@ -642,16 +670,25 @@ def news_section():
     except Exception as error:
         st.warning("News data could not be loaded.")
         st.caption(f"Error: {error}")
-
 @st.fragment(run_every=run_rate)
 def indicator_section():
+
+    st.subheader("Indicator Summary")    
     if "data" not in st.session_state or st.session_state.data is None:
         st.error("Data not found.")
         return
 
     indicator_analysis = st.session_state.indicator_analysis
+    show_indicator_summary = st.checkbox(
+        "Show indicator summary",
+        value=False,
+        key="show_indicator_summary"
+    )
 
-    st.subheader("Technical Indicator Summary")
+    if not show_indicator_summary:
+        st.caption("Indicator summary is hidden.")
+        return
+
 
     col1, col2, col3 = st.columns(3)
 
@@ -679,18 +716,34 @@ def indicator_section():
 
 @st.fragment(run_every=run_rate)
 def company_section():
-    company_data_display = st.selectbox(
-        "Display/Hide Company data:",
-        ["Display Company Data", "Hide Company Data"]
+    st.subheader("Company Profile")
+
+    show_company_profile = st.checkbox(
+        "Show company profile",
+        value=False,
+        key="show_company_profile"
     )
 
-    if company_data_display == "Display Company Data":
-        display_company_profile(stock, ticker)
-    else:
-        st.write("Company data is hidden. Select 'Display Company Data' to view it.")
+    if not show_company_profile:
+        st.caption("Company profile is hidden.")
+        return
+
+    display_company_profile(stock, ticker)
 
 @st.fragment(run_every=run_rate)
 def comparison_section():
+    st.subheader("Ticker Comparison")
+
+    show_comparison = st.checkbox(
+        "Show ticker comparison",
+        value=False,
+        key="show_comparison"
+    )
+
+    if not show_comparison:
+        st.caption("Ticker comparison is hidden.")
+        return
+
     comp_table_input = st.text_input(
         "Enter tickers to compare, separated by commas:",
         "QBTS, SMCI, MU, INTC"
@@ -777,14 +830,35 @@ def comparison_section():
 
 @st.fragment(run_every=run_rate)
 def benchmark_section():
+    st.subheader("Benchmark Comparison")
     if "data" not in st.session_state or st.session_state.data is None:
         st.error("Data not found.")
         return
 
+
+    show_benchmark = st.checkbox(
+        "Show benchmark comparison chart",
+        value=False
+    )
+    
     data = st.session_state.data
     percent_change = st.session_state.percent_change
 
     if show_benchmark:
+
+        benchmark = st.selectbox(
+            "Choose a benchmark to compare against:",
+            ["S&P 500", "Nasdaq Composite", "Dow Jones", "Russell 2000"]
+        )
+
+        #Benchmark name-> Ticker (dict)
+        benchmark_symbols = {
+            "S&P 500": "^GSPC",
+            "Nasdaq Composite": "^IXIC",
+            "Dow Jones": "^DJI",
+            "Russell 2000": "^RUT"
+        }
+
         benchmark_stock = yf.Ticker(benchmark_symbols[benchmark])
 
         benchmark_data = get_stock_history(benchmark_stock)
@@ -1057,7 +1131,7 @@ def chart_section():
     #END OF MAIN CHART
 # GROQ AI TECHNICAL ANALYSIS
 def ai_section():
-    st.subheader("AI Analysis Section:")
+    st.subheader("AI Analysis:")
     if "data" not in st.session_state or st.session_state.data is None:
         st.warning("Stock data is not ready yet.")
         return
@@ -1097,12 +1171,86 @@ def ai_section():
         st.write("AI Company Data Analysis")
         st.write(st.session_state.company_ai_response)
 
+#Chatbot that explains investing and stock market concepts
+def investing_chatbot_section():
+    st.subheader("Investing Learning Assistant")
+
+    st.write(
+        "Ask about investing terms, stock market concepts, financial metrics, or technical indicators."
+    )
+
+    if "investing_chat_messages" not in st.session_state:
+        st.session_state.investing_chat_messages = []
+    suggested_questions = [
+        "What does P/E ratio mean?",
+        "What is market cap?",
+        "What is RSI?",
+        "What is VWAP?",
+        "What does bullish vs bearish mean?",
+        "How do I compare a stock to a benchmark?"
+    ]
+
+    st.write("Try asking:")
+
+    suggestion_cols = st.columns(2)
+
+    for index, question in enumerate(suggested_questions):
+        with suggestion_cols[index % 2]:
+            if st.button(question, key=f"suggestion_{index}"):
+                st.session_state.investing_chat_messages.append(
+                    {"role": "user", "content": question}
+                )
+
+                answer = ask_investing_tutor(question)
+
+                st.session_state.investing_chat_messages.append(
+                    {"role": "assistant", "content": answer}
+                )
+
+
+
+    for message in st.session_state.investing_chat_messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    user_question = st.chat_input("Ask an investing question...")
+
+    if user_question:
+        st.session_state.investing_chat_messages.append(
+            {"role": "user", "content": user_question}
+        )
+
+        with st.chat_message("user"):
+            st.write(user_question)
+
+        with st.spinner("Explaining concept..."):
+            answer = ask_investing_tutor(user_question)
+
+        st.session_state.investing_chat_messages.append(
+            {"role": "assistant", "content": answer}
+        )
+
+        with st.chat_message("assistant"):
+            st.write(answer)
+
+    if st.button("Clear investing assistant chat"):
+        st.session_state.investing_chat_messages = []
+        st.rerun()
+#Run section functions
 #Run section functions
 data_section()
-news_section()
 chart_section()
+st.divider()
+news_section()
+st.divider()
 ai_section()
+st.divider()
 indicator_section()
+st.divider()
 company_section()
+st.divider()
 comparison_section()
+st.divider()
 benchmark_section()
+st.divider()
+investing_chatbot_section()

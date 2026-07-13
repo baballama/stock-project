@@ -93,6 +93,7 @@ Week 3 6/7-6/13
         Added local Ollama AI analysis
             -uses the indicator reader results to generate a bullish and bearish explanation
             -keeps the AI analysis based on data to prevent hallucinations
+
     Week 6 6/28-7/4
     -6/29
         Researched alternatives to Ollama for AI analysis that could work on the website
@@ -113,6 +114,7 @@ Week 3 6/7-6/13
         Added a separate Ai section at the bottom of the web app
             -Moved AI analysis buttons into this section
             -Prevents auto-refresh from erasing the summaries
+
     Week 7 7/5-/7/11
     -7/5
         Fixed an issue where generating one AI analysis would remove the other
@@ -134,6 +136,15 @@ Week 3 6/7-6/13
         -added alternative option to select specific start/end date for data retrieval
             Makes it so users can customize what time period they see in order to allow them to track price movement from specific dates such as earnings
 
+    Week 8
+    -7/12&7/13
+        -added an AI chatbot assistant that helps users learn investing terms and cocnepts
+            -has suggested questions so users have a better idea of what to ask
+            -
+        -made many sections have show/hide button to make the website less crowded
+            news sections, comparison section, company profile section 
+        -added dividers between different sections to make it less overwhelming and more organized
+        git commit
 Current Features
     -Basic stock tracking features
         -Ticker input, Time period selector, Time between prices selector
