@@ -11,9 +11,9 @@ from groq import Groq
 
 #Ticker Input
 st.set_page_config(page_title="Stock Tracker", layout="wide")
-st.title("Stock Scholar")
-st.caption("A beginner-friendly stock dashboard with AI analysis and investing education.")
-with st.expander("Dashboard Settings", expanded=False):
+st.title("stockscholar.streamlit.app")
+st.caption("A beginner-friendly stock dashboard with AI analysis and a AI tutor for investing education.")
+with st.expander("Dashboard Settings ⭐", expanded=False):
     st.write("Search for stock tickers:")
     ticker = st.text_input("Enter a stock ticker:", "QBTS")
     #Time period, Chart type, Benchmark selectors
@@ -23,7 +23,9 @@ with st.expander("Dashboard Settings", expanded=False):
     )
     period = st.selectbox(    
         "Choose a time period:",
-        ["1d", "5d", "1mo", "3mo", "6mo", "1y", "5y"]
+        ["1d", "5d", "1mo", "3mo", "6mo", "1y", "5y"],
+        index=2
+        
     )
     if date_mode == "Custom Date Range":
         start_date = st.date_input(
@@ -51,7 +53,7 @@ with st.expander("Dashboard Settings", expanded=False):
     stock_indicators = st.multiselect(
         "Choose stock indicators to display:",
         ["EMA 20", "EMA 50", "EMA 200", "VWAP", "RSI", "Pivot Points", "Volume Bars"],
-        default=["EMA 20", "EMA 50", "VWAP", "Volume Bars"]
+        default=["EMA 20", "EMA 50", "VWAP", "Volume Bars","RSI"]
     )
     st.caption("Indicators are calculated using the selected chart interval.")
     #Turns ticker into yfinance object
@@ -63,7 +65,7 @@ with st.expander("Dashboard Settings", expanded=False):
         if custom_range_days <= 7:
             interval_options = ["1m", "5m", "15m", "30m", "1h"]
         elif custom_range_days <= 30:
-            interval_options = ["30m", "1h", "1d"]
+            interval_options = ["1h", "1d"]
         else:
             interval_options = ["1d", "1wk", "1mo"]
 
@@ -71,9 +73,10 @@ with st.expander("Dashboard Settings", expanded=False):
         if period == "1d":
             interval_options = ["1m", "5m", "15m", "30m", "1h"]
         elif period == "5d":
-            interval_options = ["15m", "30m", "1h", "1d"]
-        elif period == "1mo":
             interval_options = ["30m", "1h", "1d"]
+        elif period == "1mo":
+            interval_options = ["1h", "1d"]
+            index=1
         else:
             interval_options = ["1d", "1wk", "1mo"]
 
@@ -590,7 +593,6 @@ Your job:
 
     except Exception as error:
         return f"AI tutor error: {error}"
-
 #Downloads stock data and calculates shared values for the dashboard
 @st.fragment(run_every=run_rate)
 def data_section():
@@ -735,7 +737,7 @@ def company_section():
 @st.fragment(run_every=run_rate)
 def comparison_section():
     st.subheader("Ticker Comparison")
-
+    st.write("Uses same time period as selected above")
     show_comparison = st.checkbox(
         "Show ticker comparison",
         value=False,
@@ -748,7 +750,7 @@ def comparison_section():
 
     comp_table_input = st.text_input(
         "Enter tickers to compare, separated by commas:",
-        "QBTS, SMCI, MU, INTC"
+        "QBTS, SMCI, MU, INTC, IONQ, QUBT"
     )
 
     st.subheader("Ticker Comparison Table")
@@ -833,6 +835,7 @@ def comparison_section():
 @st.fragment(run_every=run_rate)
 def benchmark_section():
     st.subheader("Benchmark Comparison")
+    st.write("Compare a ticker against various benchmarks.")
     if "data" not in st.session_state or st.session_state.data is None:
         st.error("Data not found.")
         return
@@ -1134,6 +1137,16 @@ def chart_section():
 # GROQ AI TECHNICAL ANALYSIS
 def ai_section():
     st.subheader("AI Analysis:")
+
+    show_ai = st.checkbox(
+        "Show AI analysis",
+        value=False,
+        key="show_ai"
+    )
+
+    if not show_ai:
+        st.caption("AI analysis is hidden.")
+        return
     if "data" not in st.session_state or st.session_state.data is None:
         st.warning("Stock data is not ready yet.")
         return
@@ -1175,81 +1188,86 @@ def ai_section():
 
 #Chatbot that explains investing and stock market concepts
 def investing_chatbot_section():
-    st.subheader("Investing Learning Assistant")
-
-    st.write(
+    st.subheader("Stock Scholar 🎓")
+    st.write("Welcome to the Stock Scholar! I'm an AI assistant here to help you understand investing and stock market concepts.")
+    with st.expander("Open Investing Assistant", expanded=False):
+        st.write(
         "Ask about investing terms, stock market concepts, financial metrics, or technical indicators."
     )
+        if "investing_chat_messages" not in st.session_state:
+            st.session_state.investing_chat_messages = []
+        suggested_questions = [
+            "What does P/E ratio mean?",
+            "What is market cap?",
+            "What is RSI?",
+            "What is the number behind EMA?",
+            "What does bullish vs bearish mean?",
+            "How do traders use stock indicators?",
+            "Explain basic market concepts for new investors.",
+        ]
 
-    if "investing_chat_messages" not in st.session_state:
-        st.session_state.investing_chat_messages = []
-    suggested_questions = [
-        "What does P/E ratio mean?",
-        "What is market cap?",
-        "What is RSI?",
-        "What is VWAP?",
-        "What does bullish vs bearish mean?",
-        "How do I compare a stock to a benchmark?"
-    ]
+        st.write("Try asking:")
 
-    st.write("Try asking:")
+        suggestion_cols = st.columns(2)
 
-    suggestion_cols = st.columns(2)
+        for index, question in enumerate(suggested_questions):
+            with suggestion_cols[index % 2]:
+                if st.button(question, key=f"suggestion_{index}"):
+                    st.session_state.investing_chat_messages.append(
+                        {"role": "user", "content": question}
+                    )
 
-    for index, question in enumerate(suggested_questions):
-        with suggestion_cols[index % 2]:
-            if st.button(question, key=f"suggestion_{index}"):
-                st.session_state.investing_chat_messages.append(
-                    {"role": "user", "content": question}
-                )
+                    answer = ask_investing_tutor(question)
 
-                answer = ask_investing_tutor(question)
-
-                st.session_state.investing_chat_messages.append(
-                    {"role": "assistant", "content": answer}
-                )
+                    st.session_state.investing_chat_messages.append(
+                        {"role": "assistant", "content": answer}
+                    )
+                    st.session_state.scroll_to_chat = True
 
 
+        for message in st.session_state.investing_chat_messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
 
-    for message in st.session_state.investing_chat_messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+        user_question = st.chat_input("Ask an investing question...")
 
-    user_question = st.chat_input("Ask an investing question...")
+        if user_question:
+            st.session_state.investing_chat_messages.append(
+                {"role": "user", "content": user_question}
+            )
+            with st.chat_message("user"):
+                st.write(user_question)
 
-    if user_question:
-        st.session_state.investing_chat_messages.append(
-            {"role": "user", "content": user_question}
-        )
+            with st.spinner("Explaining concept..."):
+                answer = ask_investing_tutor(user_question)
 
-        with st.chat_message("user"):
-            st.write(user_question)
+            st.session_state.investing_chat_messages.append(
+                {"role": "assistant", "content": answer}
+            )
+            st.session_state.scroll_to_chat = True
+            st.markdown(
+                '<div id="latest-chat-response"></div>',
+                unsafe_allow_html=True
+            )
+            with st.chat_message("assistant"):
+                st.write(answer)
+        st.divider()
+        if st.button("Clear investing assistant chat"):
+            st.session_state.investing_chat_messages = []
+            st.rerun()
 
-        with st.spinner("Explaining concept..."):
-            answer = ask_investing_tutor(user_question)
-
-        st.session_state.investing_chat_messages.append(
-            {"role": "assistant", "content": answer}
-        )
-
-        with st.chat_message("assistant"):
-            st.write(answer)
-
-    if st.button("Clear investing assistant chat"):
-        st.session_state.investing_chat_messages = []
-        st.rerun()
-#Run section functions
-#Run section functions
 data_section()
 chart_section()
 st.divider()
-news_section()
-st.divider()
-ai_section()
-st.divider()
-indicator_section()
-st.divider()
-company_section()
+st.subheader("Ticker Info/Analysis")
+with st.expander(f"{ticker.upper()} Company and Indicator Info Analysis"):
+    news_section()
+    st.divider()
+    indicator_section()
+    st.divider()
+    ai_section()
+    st.divider()
+    company_section()
 st.divider()
 comparison_section()
 st.divider()
@@ -1259,6 +1277,6 @@ investing_chatbot_section()
 st.divider()
 github_url = "https://github.com/baballama/stock-project"
 st.link_button(
-    "GitHub Repository",
+    "GitHub Repository Link",
     github_url
 )

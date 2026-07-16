@@ -150,6 +150,12 @@ Week 3 6/7-6/13
         new link, stockscholar.streamlit.app
         removed old website link file
         added github repo link to website
+    -7/15 & 7/16
+        -added option to show/hide ai analysis
+        -fixed an issue where opening the website automatically scrolls to the investing tutor chatbot
+        -organized the web app by compressing different sections together with expanders
+        -added some design to the web app using emojis to make it less confusing
+
 Current Features
     -Basic stock tracking features
         -Ticker input, Time period selector, Time between prices selector
@@ -206,12 +212,11 @@ Current Features
     AI chatbot assistant that helps users learn investing terms and concepts
         -has suggested questions so users have a better idea of what to ask
 Next Features:
+Improved AI analysis with more context like recent news and sector trends
 Add more stock indicators
 Make comparison charts one chart with multiple lines
 Add beginner friendly explanations through the web app
-Add AI assistant that answers questions surrounding investing
-Add option to add starting and end date for data retrieval
 AI analysis of recent news articles combined with indicator summary
 Portfolio tracker
-More company data such as average volume, market cap, P/E ratio, earning dates etc.
+
 
