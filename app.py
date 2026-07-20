@@ -24,7 +24,7 @@ with st.expander("Dashboard Settings ⭐", expanded=False):
     period = st.selectbox(    
         "Choose a time period:",
         ["1d", "5d", "1mo", "3mo", "6mo", "1y", "5y"],
-        index=2
+        index=3
         
     )
     if date_mode == "Custom Date Range":
@@ -52,8 +52,12 @@ with st.expander("Dashboard Settings ⭐", expanded=False):
     #Stock indicator dropdown selector
     stock_indicators = st.multiselect(
         "Choose stock indicators to display:",
-        ["EMA 20", "EMA 50", "EMA 200", "VWAP", "RSI", "Pivot Points", "Volume Bars"],
-        default=["EMA 20", "EMA 50", "VWAP", "Volume Bars","RSI"]
+        [
+            "EMA 20","EMA 50","EMA 200","VWAP","Bollinger Bands","RSI","MACD","ATR","Stochastic","OBV","Pivot Points","Volume Bars"
+        ],
+        default=[
+            "EMA 20","EMA 50","VWAP","Volume Bars","RSI"
+        ]
     )
     st.caption("Indicators are calculated using the selected chart interval.")
     #Turns ticker into yfinance object
@@ -75,8 +79,7 @@ with st.expander("Dashboard Settings ⭐", expanded=False):
         elif period == "5d":
             interval_options = ["30m", "1h", "1d"]
         elif period == "1mo":
-            interval_options = ["1h", "1d"]
-            index=1
+            interval_options = ["1d"]
         else:
             interval_options = ["1d", "1wk", "1mo"]
 
@@ -111,13 +114,148 @@ def calculate_rsi(close_prices, window=14):
     gains = price_change.clip(lower=0)
     losses = -price_change.clip(upper=0)
 
-    average_gain = gains.rolling(window=window).mean()
-    average_loss = losses.rolling(window=window).mean()
+    average_gain = gains.ewm(
+        alpha=1 / window,
+        adjust=False,
+        min_periods=window
+    ).mean()
+    average_loss = losses.ewm(
+        alpha=1 / window,
+        adjust=False,
+        min_periods=window
+    ).mean()
 
-    rs = average_gain / average_loss
+     # Replacing zero with NaN prevents division-by-zero errors.
+    rs = average_gain / average_loss.replace(0, float("nan"))
     rsi = 100 - (100 / (1 + rs))
-
+ 
+     # Handle one-direction and completely flat price windows correctly.
+    rsi = rsi.mask((average_loss == 0) & (average_gain > 0), 100)
+    rsi = rsi.mask((average_gain == 0) & (average_loss > 0), 0)
+    rsi = rsi.mask((average_gain == 0) & (average_loss == 0), 50)
+ 
     return rsi
+def calculate_macd(
+    close_prices,
+    fast_window=12,
+    slow_window=26,
+    signal_window=9
+):
+    fast_ema = close_prices.ewm(
+        span=fast_window,
+        adjust=False,
+        min_periods=fast_window
+    ).mean()
+
+    slow_ema = close_prices.ewm(
+        span=slow_window,
+        adjust=False,
+        min_periods=slow_window
+    ).mean()
+
+    macd_line = fast_ema - slow_ema
+
+    signal_line = macd_line.ewm(
+        span=signal_window,
+        adjust=False,
+        min_periods=signal_window
+    ).mean()
+
+    histogram = macd_line - signal_line
+
+    return macd_line, signal_line, histogram
+
+
+def calculate_bollinger_bands(
+    close_prices,
+    window=20,
+    standard_deviations=2
+):
+    middle_band = close_prices.rolling(
+        window=window,
+        min_periods=window
+    ).mean()
+
+    rolling_std = close_prices.rolling(
+        window=window,
+        min_periods=window
+    ).std(ddof=0)
+
+    upper_band = middle_band + (
+        standard_deviations * rolling_std
+    )
+
+    lower_band = middle_band - (
+        standard_deviations * rolling_std
+    )
+
+    return middle_band, upper_band, lower_band
+
+
+def calculate_atr(data, window=14):
+    previous_close = data["Close"].shift(1)
+
+    true_range_parts = pd.concat(
+        [
+            data["High"] - data["Low"],
+            (data["High"] - previous_close).abs(),
+            (data["Low"] - previous_close).abs()
+        ],
+        axis=1
+    )
+
+    true_range = true_range_parts.max(axis=1)
+
+    # Wilder-style smoothing for Average True Range
+    atr = true_range.ewm(
+        alpha=1 / window,
+        adjust=False,
+        min_periods=window
+    ).mean()
+
+    return atr
+
+
+def calculate_stochastic(
+    data,
+    window=14,
+    smooth_window=3
+):
+    lowest_low = data["Low"].rolling(
+        window=window,
+        min_periods=window
+    ).min()
+
+    highest_high = data["High"].rolling(
+        window=window,
+        min_periods=window
+    ).max()
+
+    price_range = (
+        highest_high - lowest_low
+    ).replace(0, float("nan"))
+
+    percent_k = 100 * (
+        (data["Close"] - lowest_low) / price_range
+    )
+
+    percent_d = percent_k.rolling(
+        window=smooth_window,
+        min_periods=smooth_window
+    ).mean()
+
+    return percent_k, percent_d
+
+
+def calculate_obv(close_prices, volume):
+    price_direction = (
+        close_prices.diff().gt(0).astype(int)
+        - close_prices.diff().lt(0).astype(int)
+    )
+
+    signed_volume = volume * price_direction
+
+    return signed_volume.fillna(0).cumsum()
 def calculate_pivot_points(data):
     if len(data) < 2:
         return None
@@ -143,96 +281,632 @@ def calculate_pivot_points(data):
     }
     #Analyzes all indicators together using simple rules
 def analyze_indicators(data, pivot_points):
+    # Get the latest available price and indicator values.
     current_price = data["Close"].iloc[-1]
     current_volume = data["Volume"].iloc[-1]
 
     ema_20 = data["EMA_20"].iloc[-1]
     ema_50 = data["EMA_50"].iloc[-1]
     ema_200 = data["EMA_200"].iloc[-1]
+
     rsi = data["RSI"].iloc[-1]
     vwap = data["VWAP"].iloc[-1]
 
-    average_volume = data["Volume"].tail(20).mean()
+    macd = data["MACD"].iloc[-1]
+    macd_signal = data["MACD_Signal"].iloc[-1]
+    macd_histogram = data["MACD_Histogram"].iloc[-1]
+
+    bb_middle = data["BB_Middle"].iloc[-1]
+    bb_upper = data["BB_Upper"].iloc[-1]
+    bb_lower = data["BB_Lower"].iloc[-1]
+    bb_width = data["BB_Width"].iloc[-1]
+
+    atr = data["ATR"].iloc[-1]
+    atr_percent = data["ATR_Percent"].iloc[-1]
+
+    stochastic_k = data["Stochastic_K"].iloc[-1]
+    stochastic_d = data["Stochastic_D"].iloc[-1]
+
+    current_obv = data["OBV"].iloc[-1]
 
     analysis = {}
 
-    #Analyze EMA trend
-    if current_price > ema_20 > ema_50 > ema_200:
-        analysis["Trend"] = "Bullish"
-        analysis["Trend Reason"] = "Price is above EMA 20, EMA 50, and EMA 200."
-    elif current_price < ema_20 < ema_50 < ema_200:
-        analysis["Trend"] = "Bearish"
-        analysis["Trend Reason"] = "Price is below EMA 20, EMA 50, and EMA 200."
-    elif current_price > ema_50:
-        analysis["Trend"] = "Mildly Bullish"
-        analysis["Trend Reason"] = "Price is above EMA 50, but the full EMA structure is not strongly bullish."
-    elif current_price < ema_50:
-        analysis["Trend"] = "Mildly Bearish"
-        analysis["Trend Reason"] = "Price is below EMA 50, showing weaker medium-term trend."
-    else:
-        analysis["Trend"] = "Neutral"
-        analysis["Trend Reason"] = "Price is close to the main moving averages."
+    # --------------------------------------------------
+    # EMA TREND
+    # --------------------------------------------------
 
-    #Analyze RSI momentum
-    if rsi >= 70:
-        analysis["Momentum"] = "Strong / Overbought"
-        analysis["Momentum Reason"] = "RSI is above 70, showing strong momentum but higher pullback risk."
-    elif rsi >= 50:
-        analysis["Momentum"] = "Bullish"
-        analysis["Momentum Reason"] = "RSI is above 50, showing positive momentum."
+    if pd.notna(ema_20) and pd.notna(ema_50) and pd.notna(ema_200):
+        if current_price > ema_20 > ema_50 > ema_200:
+            analysis["Trend"] = "Strongly Bullish"
+            analysis["Trend Reason"] = (
+                "Price is above EMA 20, EMA 50, and EMA 200, "
+                "and the shorter averages are above the longer averages."
+            )
+
+        elif current_price < ema_20 < ema_50 < ema_200:
+            analysis["Trend"] = "Strongly Bearish"
+            analysis["Trend Reason"] = (
+                "Price is below EMA 20, EMA 50, and EMA 200, "
+                "and the shorter averages are below the longer averages."
+            )
+
+        elif current_price > ema_20 and ema_20 > ema_50:
+            analysis["Trend"] = "Bullish"
+            analysis["Trend Reason"] = (
+                "Price is above EMA 20, and EMA 20 is above EMA 50, "
+                "but the full long-term EMA structure is not bullish."
+            )
+
+        elif current_price < ema_20 and ema_20 < ema_50:
+            analysis["Trend"] = "Bearish"
+            analysis["Trend Reason"] = (
+                "Price is below EMA 20, and EMA 20 is below EMA 50, "
+                "but the full long-term EMA structure is not bearish."
+            )
+
+        elif current_price > ema_50:
+            analysis["Trend"] = "Mildly Bullish"
+            analysis["Trend Reason"] = (
+                "Price is above EMA 50, but the moving averages are mixed."
+            )
+
+        elif current_price < ema_50:
+            analysis["Trend"] = "Mildly Bearish"
+            analysis["Trend Reason"] = (
+                "Price is below EMA 50, but the moving averages are mixed."
+            )
+
+        else:
+            analysis["Trend"] = "Neutral"
+            analysis["Trend Reason"] = (
+                "Price is close to the main moving averages."
+            )
+
+    elif pd.notna(ema_20) and pd.notna(ema_50):
+        if current_price > ema_20 > ema_50:
+            analysis["Trend"] = "Bullish"
+            analysis["Trend Reason"] = (
+                "Price is above EMA 20 and EMA 50. EMA 200 is unavailable "
+                "because the selected range does not contain enough candles."
+            )
+
+        elif current_price < ema_20 < ema_50:
+            analysis["Trend"] = "Bearish"
+            analysis["Trend Reason"] = (
+                "Price is below EMA 20 and EMA 50. EMA 200 is unavailable "
+                "because the selected range does not contain enough candles."
+            )
+
+        elif current_price > ema_50:
+            analysis["Trend"] = "Mildly Bullish"
+            analysis["Trend Reason"] = (
+                "Price is above EMA 50, but EMA 20 and EMA 50 are not fully aligned."
+            )
+
+        else:
+            analysis["Trend"] = "Mildly Bearish"
+            analysis["Trend Reason"] = (
+                "Price is below EMA 50, but EMA 20 and EMA 50 are not fully aligned."
+            )
+
+    elif pd.notna(ema_20):
+        if current_price > ema_20:
+            analysis["Trend"] = "Short-Term Bullish"
+            analysis["Trend Reason"] = (
+                "Price is above EMA 20. Longer EMAs are unavailable because "
+                "the selected range does not contain enough candles."
+            )
+
+        elif current_price < ema_20:
+            analysis["Trend"] = "Short-Term Bearish"
+            analysis["Trend Reason"] = (
+                "Price is below EMA 20. Longer EMAs are unavailable because "
+                "the selected range does not contain enough candles."
+            )
+
+        else:
+            analysis["Trend"] = "Short-Term Neutral"
+            analysis["Trend Reason"] = "Price is very close to EMA 20."
+
+    else:
+        analysis["Trend"] = "Unavailable"
+        analysis["Trend Reason"] = (
+            "Not enough candles are available to calculate the moving averages."
+        )
+
+    # --------------------------------------------------
+    # RSI MOMENTUM
+    # --------------------------------------------------
+
+    if pd.isna(rsi):
+        analysis["Momentum"] = "Unavailable"
+        analysis["Momentum Reason"] = (
+            "At least 14 candles are needed to calculate RSI."
+        )
+
+    elif rsi >= 70:
+        analysis["Momentum"] = f"Overbought ({rsi:.1f})"
+        analysis["Momentum Reason"] = (
+            "RSI is at or above 70, showing strong upward momentum but "
+            "also a greater risk that the move is becoming stretched."
+        )
+
+    elif rsi >= 55:
+        analysis["Momentum"] = f"Bullish ({rsi:.1f})"
+        analysis["Momentum Reason"] = (
+            "RSI is above 55, showing positive momentum without being overbought."
+        )
+
     elif rsi <= 30:
-        analysis["Momentum"] = "Weak / Oversold"
-        analysis["Momentum Reason"] = "RSI is below 30, showing heavy selling pressure but possible bounce risk."
-    else:
-        analysis["Momentum"] = "Bearish"
-        analysis["Momentum Reason"] = "RSI is below 50, showing weaker momentum."
+        analysis["Momentum"] = f"Oversold ({rsi:.1f})"
+        analysis["Momentum Reason"] = (
+            "RSI is at or below 30, showing strong selling pressure. "
+            "Oversold does not guarantee that price will immediately recover."
+        )
 
-    #Analyze VWAP
-    if current_price > vwap:
-        analysis["VWAP"] = "Bullish"
-        analysis["VWAP Reason"] = "Price is above VWAP, meaning buyers are trading above the volume-weighted average price."
-    elif current_price < vwap:
-        analysis["VWAP"] = "Bearish"
-        analysis["VWAP Reason"] = "Price is below VWAP, meaning sellers are trading below the volume-weighted average price."
-    else:
-        analysis["VWAP"] = "Neutral"
-        analysis["VWAP Reason"] = "Price is very close to VWAP."
+    elif rsi <= 45:
+        analysis["Momentum"] = f"Bearish ({rsi:.1f})"
+        analysis["Momentum Reason"] = (
+            "RSI is below 45, showing weaker price momentum."
+        )
 
-    #Analyze pivot points
-    if pivot_points is not None:
+    else:
+        analysis["Momentum"] = f"Neutral ({rsi:.1f})"
+        analysis["Momentum Reason"] = (
+            "RSI is between 45 and 55, which is a neutral momentum range."
+        )
+
+    # --------------------------------------------------
+    # VWAP
+    # --------------------------------------------------
+
+    if pd.isna(vwap):
+        analysis["VWAP"] = "Unavailable"
+        analysis["VWAP Reason"] = (
+            "VWAP could not be calculated because usable volume data is missing."
+        )
+
+    else:
+        vwap_difference_percent = (
+            (current_price - vwap) / vwap
+        ) * 100 if vwap != 0 else 0
+
+        if vwap_difference_percent > 0.1:
+            analysis["VWAP"] = f"Bullish (${vwap:.2f})"
+            analysis["VWAP Reason"] = (
+                f"Price is {vwap_difference_percent:.2f}% above VWAP, meaning "
+                "it is trading above the volume-weighted average price."
+            )
+
+        elif vwap_difference_percent < -0.1:
+            analysis["VWAP"] = f"Bearish (${vwap:.2f})"
+            analysis["VWAP Reason"] = (
+                f"Price is {abs(vwap_difference_percent):.2f}% below VWAP, "
+                "meaning it is trading below the volume-weighted average price."
+            )
+
+        else:
+            analysis["VWAP"] = f"Neutral (${vwap:.2f})"
+            analysis["VWAP Reason"] = (
+                "Price is within 0.1% of VWAP."
+            )
+
+    # --------------------------------------------------
+    # PIVOT POINTS
+    # --------------------------------------------------
+
+    if (
+        pivot_points is not None
+        and all(
+            pd.notna(pivot_points.get(level))
+            for level in ["Pivot", "R1", "S1"]
+        )
+    ):
         pivot = pivot_points["Pivot"]
-        r1 = pivot_points["R1"]
-        s1 = pivot_points["S1"]
+        resistance_1 = pivot_points["R1"]
+        support_1 = pivot_points["S1"]
 
-        if current_price > r1:
+        if current_price > resistance_1:
             analysis["Pivot"] = "Bullish Breakout"
-            analysis["Pivot Reason"] = "Price is above R1 resistance."
+            analysis["Pivot Reason"] = (
+                f"Price is above R1 resistance at ${resistance_1:.2f}."
+            )
+
         elif current_price > pivot:
             analysis["Pivot"] = "Bullish"
-            analysis["Pivot Reason"] = "Price is above the main pivot level."
-        elif current_price < s1:
+            analysis["Pivot Reason"] = (
+                f"Price is above the main pivot level at ${pivot:.2f}."
+            )
+
+        elif current_price < support_1:
             analysis["Pivot"] = "Bearish Breakdown"
-            analysis["Pivot Reason"] = "Price is below S1 support."
+            analysis["Pivot Reason"] = (
+                f"Price is below S1 support at ${support_1:.2f}."
+            )
+
         elif current_price < pivot:
             analysis["Pivot"] = "Bearish"
-            analysis["Pivot Reason"] = "Price is below the main pivot level."
+            analysis["Pivot Reason"] = (
+                f"Price is below the main pivot level at ${pivot:.2f}."
+            )
+
         else:
             analysis["Pivot"] = "Neutral"
-            analysis["Pivot Reason"] = "Price is close to the main pivot level."
+            analysis["Pivot Reason"] = (
+                "Price is very close to the main pivot level."
+            )
+
     else:
         analysis["Pivot"] = "Unavailable"
-        analysis["Pivot Reason"] = "Not enough data to calculate pivot points."
+        analysis["Pivot Reason"] = (
+            "Not enough usable data is available to calculate pivot points."
+        )
 
-    #Analyze volume
-    if current_volume > average_volume * 1.5:
-        analysis["Volume"] = "High"
-        analysis["Volume Reason"] = "Current volume is much higher than the recent 20-candle average."
-    elif current_volume > average_volume:
-        analysis["Volume"] = "Above Average"
-        analysis["Volume Reason"] = "Current volume is above the recent 20-candle average."
+    # --------------------------------------------------
+    # VOLUME
+    # --------------------------------------------------
+
+    # Exclude the current candle from the average so the current candle
+    # is compared with the preceding candles instead of with itself.
+    previous_volume = data["Volume"].iloc[:-1].dropna().tail(20)
+    average_volume = previous_volume.mean()
+
+    if (
+        pd.isna(current_volume)
+        or pd.isna(average_volume)
+        or average_volume <= 0
+    ):
+        analysis["Volume"] = "Unavailable"
+        analysis["Volume Reason"] = (
+            "Not enough usable volume data is available for comparison."
+        )
+
     else:
-        analysis["Volume"] = "Normal / Weak"
-        analysis["Volume Reason"] = "Current volume is not strongly above the recent average."
+        volume_ratio = current_volume / average_volume
+
+        if volume_ratio >= 1.5:
+            analysis["Volume"] = f"High ({volume_ratio:.2f}x)"
+            analysis["Volume Reason"] = (
+                "Current volume is at least 1.5 times the average of the "
+                "preceding 20 candles."
+            )
+
+        elif volume_ratio >= 1:
+            analysis["Volume"] = f"Above Average ({volume_ratio:.2f}x)"
+            analysis["Volume Reason"] = (
+                "Current volume is above the average of the preceding 20 candles."
+            )
+
+        else:
+            analysis["Volume"] = f"Below Average ({volume_ratio:.2f}x)"
+            analysis["Volume Reason"] = (
+                "Current volume is below the average of the preceding 20 candles."
+            )
+
+    # --------------------------------------------------
+    # MACD
+    # --------------------------------------------------
+
+    if (
+        pd.isna(macd)
+        or pd.isna(macd_signal)
+        or pd.isna(macd_histogram)
+    ):
+        analysis["MACD"] = "Unavailable"
+        analysis["MACD Reason"] = (
+            "At least 34 candles are normally needed before the MACD signal "
+            "line becomes available."
+        )
+
+    else:
+        previous_histogram = None
+
+        if len(data) >= 2:
+            possible_previous_histogram = data["MACD_Histogram"].iloc[-2]
+
+            if pd.notna(possible_previous_histogram):
+                previous_histogram = possible_previous_histogram
+
+        if macd > macd_signal:
+            if (
+                previous_histogram is not None
+                and macd_histogram > previous_histogram
+            ):
+                macd_result = "Bullish / Strengthening"
+
+            elif (
+                previous_histogram is not None
+                and macd_histogram < previous_histogram
+            ):
+                macd_result = "Bullish / Weakening"
+
+            else:
+                macd_result = "Bullish"
+
+            analysis["MACD"] = (
+                f"{macd_result} ({macd_histogram:+.3f})"
+            )
+            analysis["MACD Reason"] = (
+                "The MACD line is above the signal line. A rising histogram "
+                "suggests bullish momentum is strengthening, while a shrinking "
+                "histogram suggests it is weakening."
+            )
+
+        elif macd < macd_signal:
+            if (
+                previous_histogram is not None
+                and macd_histogram < previous_histogram
+            ):
+                macd_result = "Bearish / Strengthening"
+
+            elif (
+                previous_histogram is not None
+                and macd_histogram > previous_histogram
+            ):
+                macd_result = "Bearish / Weakening"
+
+            else:
+                macd_result = "Bearish"
+
+            analysis["MACD"] = (
+                f"{macd_result} ({macd_histogram:+.3f})"
+            )
+            analysis["MACD Reason"] = (
+                "The MACD line is below the signal line. A more negative "
+                "histogram suggests bearish momentum is strengthening, while "
+                "a histogram moving toward zero suggests it is weakening."
+            )
+
+        else:
+            analysis["MACD"] = "Neutral"
+            analysis["MACD Reason"] = (
+                "The MACD and signal lines are currently equal."
+            )
+
+    # --------------------------------------------------
+    # BOLLINGER BANDS
+    # --------------------------------------------------
+
+    bollinger_values = [
+        bb_middle,
+        bb_upper,
+        bb_lower,
+        bb_width
+    ]
+
+    if any(pd.isna(value) for value in bollinger_values):
+        analysis["Bollinger Bands"] = "Unavailable"
+        analysis["Bollinger Bands Reason"] = (
+            "At least 20 candles are needed to calculate Bollinger Bands."
+        )
+
+    else:
+        previous_band_widths = (
+            data["BB_Width"]
+            .iloc[:-1]
+            .dropna()
+            .tail(20)
+        )
+
+        average_band_width = previous_band_widths.mean()
+
+        squeeze_detected = (
+            pd.notna(average_band_width)
+            and average_band_width > 0
+            and bb_width < average_band_width * 0.75
+        )
+
+        if current_price > bb_upper:
+            bollinger_result = "Above Upper Band"
+            bollinger_reason = (
+                "Price is above the upper Bollinger Band, showing a strong "
+                "but potentially stretched upward move."
+            )
+
+        elif current_price < bb_lower:
+            bollinger_result = "Below Lower Band"
+            bollinger_reason = (
+                "Price is below the lower Bollinger Band, showing a strong "
+                "but potentially stretched downward move."
+            )
+
+        elif current_price >= bb_middle:
+            bollinger_result = "Upper Half"
+            bollinger_reason = (
+                "Price is between the middle and upper Bollinger Bands."
+            )
+
+        else:
+            bollinger_result = "Lower Half"
+            bollinger_reason = (
+                "Price is between the middle and lower Bollinger Bands."
+            )
+
+        if squeeze_detected:
+            bollinger_result += " / Possible Squeeze"
+            bollinger_reason += (
+                " The bands are unusually narrow compared with their recent "
+                "width, suggesting lower volatility and a possible future expansion."
+            )
+
+        analysis["Bollinger Bands"] = (
+            f"{bollinger_result} ({bb_width:.2f}%)"
+        )
+        analysis["Bollinger Bands Reason"] = bollinger_reason
+
+    # --------------------------------------------------
+    # ATR VOLATILITY
+    # --------------------------------------------------
+
+    if pd.isna(atr) or pd.isna(atr_percent):
+        analysis["ATR Volatility"] = "Unavailable"
+        analysis["ATR Volatility Reason"] = (
+            "At least 14 candles are needed to calculate ATR."
+        )
+
+    else:
+        previous_atr_percentages = (
+            data["ATR_Percent"]
+            .iloc[:-1]
+            .dropna()
+            .tail(20)
+        )
+
+        average_atr_percent = previous_atr_percentages.mean()
+
+        if (
+            pd.isna(average_atr_percent)
+            or average_atr_percent <= 0
+        ):
+            atr_result = "Current Volatility"
+
+        elif atr_percent >= average_atr_percent * 1.25:
+            atr_result = "High / Rising"
+
+        elif atr_percent <= average_atr_percent * 0.75:
+            atr_result = "Low / Falling"
+
+        else:
+            atr_result = "Normal"
+
+        analysis["ATR Volatility"] = (
+            f"{atr_result} (${atr:.3f}, {atr_percent:.2f}%)"
+        )
+        analysis["ATR Volatility Reason"] = (
+            "ATR measures the average size of recent price movements. "
+            "It measures volatility, not bullish or bearish direction."
+        )
+
+    # --------------------------------------------------
+    # STOCHASTIC OSCILLATOR
+    # --------------------------------------------------
+
+    if pd.isna(stochastic_k) or pd.isna(stochastic_d):
+        analysis["Stochastic"] = "Unavailable"
+        analysis["Stochastic Reason"] = (
+            "At least 16 candles are normally needed for the smoothed "
+            "Stochastic Oscillator."
+        )
+
+    else:
+        previous_k = None
+        previous_d = None
+
+        if len(data) >= 2:
+            possible_previous_k = data["Stochastic_K"].iloc[-2]
+            possible_previous_d = data["Stochastic_D"].iloc[-2]
+
+            if (
+                pd.notna(possible_previous_k)
+                and pd.notna(possible_previous_d)
+            ):
+                previous_k = possible_previous_k
+                previous_d = possible_previous_d
+
+        bullish_crossover = (
+            previous_k is not None
+            and previous_d is not None
+            and previous_k <= previous_d
+            and stochastic_k > stochastic_d
+        )
+
+        bearish_crossover = (
+            previous_k is not None
+            and previous_d is not None
+            and previous_k >= previous_d
+            and stochastic_k < stochastic_d
+        )
+
+        if stochastic_k >= 80 and stochastic_d >= 80:
+            if bearish_crossover:
+                stochastic_result = "Overbought / Bearish Crossover"
+            else:
+                stochastic_result = "Overbought"
+
+        elif stochastic_k <= 20 and stochastic_d <= 20:
+            if bullish_crossover:
+                stochastic_result = "Oversold / Bullish Crossover"
+            else:
+                stochastic_result = "Oversold"
+
+        elif bullish_crossover:
+            stochastic_result = "Bullish Crossover"
+
+        elif bearish_crossover:
+            stochastic_result = "Bearish Crossover"
+
+        elif stochastic_k > stochastic_d:
+            stochastic_result = "Bullish"
+
+        elif stochastic_k < stochastic_d:
+            stochastic_result = "Bearish"
+
+        else:
+            stochastic_result = "Neutral"
+
+        analysis["Stochastic"] = (
+            f"{stochastic_result} "
+            f"(K {stochastic_k:.1f} / D {stochastic_d:.1f})"
+        )
+        analysis["Stochastic Reason"] = (
+            "%K shows where the latest close sits within the recent price "
+            "range, while %D is a smoothed version of %K. A crossover is only "
+            "reported when the two lines actually switch sides."
+        )
+
+    # --------------------------------------------------
+    # ON-BALANCE VOLUME
+    # --------------------------------------------------
+
+    lookback = min(10, len(data) - 1)
+
+    if lookback < 1 or pd.isna(current_obv):
+        analysis["OBV"] = "Unavailable"
+        analysis["OBV Reason"] = (
+            "Not enough data is available to compare price and OBV direction."
+        )
+
+    else:
+        earlier_price = data["Close"].iloc[-(lookback + 1)]
+        earlier_obv = data["OBV"].iloc[-(lookback + 1)]
+
+        price_change = current_price - earlier_price
+        obv_change = current_obv - earlier_obv
+
+        if price_change > 0 and obv_change > 0:
+            analysis["OBV"] = "Bullish Confirmation"
+            analysis["OBV Reason"] = (
+                f"Price and OBV both increased over the last "
+                f"{lookback} candles, so volume supports the price increase."
+            )
+
+        elif price_change < 0 and obv_change < 0:
+            analysis["OBV"] = "Bearish Confirmation"
+            analysis["OBV Reason"] = (
+                f"Price and OBV both decreased over the last "
+                f"{lookback} candles, so volume supports the price decline."
+            )
+
+        elif price_change > 0 and obv_change < 0:
+            analysis["OBV"] = "Bearish Divergence"
+            analysis["OBV Reason"] = (
+                f"Price increased while OBV decreased over the last "
+                f"{lookback} candles, meaning volume did not confirm the rise."
+            )
+
+        elif price_change < 0 and obv_change > 0:
+            analysis["OBV"] = "Bullish Divergence"
+            analysis["OBV Reason"] = (
+                f"Price decreased while OBV increased over the last "
+                f"{lookback} candles, meaning volume did not confirm the decline."
+            )
+
+        else:
+            analysis["OBV"] = "Neutral"
+            analysis["OBV Reason"] = (
+                f"Price or OBV changed very little over the last "
+                f"{lookback} candles."
+            )
 
     return analysis
 #Sends a prompt to Groq and returns the AI response
@@ -261,41 +935,71 @@ def ask_groq(prompt):
         return f"AI analysis error: {error}"
 #Creates a prompt using the calculated indicator summary
 def create_indicator_prompt(ticker, current_price, indicator_analysis):
+    indicator_names = [
+        "Trend",
+        "Momentum",
+        "VWAP",
+        "Pivot",
+        "Volume",
+        "MACD",
+        "Bollinger Bands",
+        "ATR Volatility",
+        "Stochastic",
+        "OBV"
+    ]
+
+    # Build one text section containing every indicator result and reason.
+    indicator_text = ""
+
+    for indicator_name in indicator_names:
+        indicator_value = indicator_analysis.get(
+            indicator_name,
+            "Unavailable"
+        )
+
+        indicator_reason = indicator_analysis.get(
+            f"{indicator_name} Reason",
+            "No explanation is available."
+        )
+
+        indicator_text += f"""
+{indicator_name}: {indicator_value}
+{indicator_name} reason: {indicator_reason}
+"""
+
     prompt = f"""
 Analyze this stock's technical indicators using only the data provided.
 
-Do not give a direct buy or sell recommendation.
-Do not invent news, earnings, fundamentals, or price targets.
-Explain both the bullish and bearish case.
-Keep the explanation beginner-friendly and not too long.
+Rules:
+- Do not give a direct buy, sell, or hold recommendation.
+- Do not invent news, earnings, fundamentals, price targets, or missing data.
+- Explain both the bullish and bearish evidence.
+- Identify signals that conflict with each other.
+- Keep the explanation beginner-friendly and reasonably short.
+- Treat ATR as a measure of volatility, not bullish or bearish direction.
+- Do not count EMA, MACD, RSI, and Stochastic as completely independent evidence because they overlap in measuring trend or momentum.
+- Explain whether volume and OBV confirm or weaken the price movement.
+- If an indicator says Unavailable, do not guess its value or signal.
 
 Ticker: {ticker.upper()}
 Current price: ${current_price:.2f}
 
-Trend: {indicator_analysis["Trend"]}
-Trend reason: {indicator_analysis["Trend Reason"]}
+Technical indicator results:
+{indicator_text}
 
-Momentum: {indicator_analysis["Momentum"]}
-Momentum reason: {indicator_analysis["Momentum Reason"]}
-
-VWAP: {indicator_analysis["VWAP"]}
-VWAP reason: {indicator_analysis["VWAP Reason"]}
-
-Pivot: {indicator_analysis["Pivot"]}
-Pivot reason: {indicator_analysis["Pivot Reason"]}
-
-Volume: {indicator_analysis["Volume"]}
-Volume reason: {indicator_analysis["Volume Reason"]}
-
-Format the answer like this:
+Format the response exactly like this:
 
 Overall Technical Read:
-Bullish Case:
-Bearish Case:
+Bullish Evidence:
+Bearish Evidence:
+Conflicting Signals:
+Volatility and Risk:
+Volume Confirmation:
 What To Watch:
 Beginner Explanation:
 """
-    return prompt    
+
+    return prompt   
 #Formats large numbers like market cap into readable text
 def format_large_number(number):
     if number is None:
@@ -601,18 +1305,101 @@ def data_section():
     if data.empty:
         st.session_state.data = None
         return
-
     #Calculate indicators
-    data["EMA_20"] = data["Close"].ewm(span=20, adjust=False).mean()
-    data["EMA_50"] = data["Close"].ewm(span=50, adjust=False).mean()
-    data["EMA_200"] = data["Close"].ewm(span=200, adjust=False).mean()
+    data["EMA_20"] = data["Close"].ewm(
+        span=20,
+        adjust=False,
+        min_periods=20
+    ).mean()
+    data["EMA_50"] = data["Close"].ewm(
+        span=50,
+        adjust=False,
+        min_periods=50
+    ).mean()
 
-    data["Typical_Price"] = (data["High"] + data["Low"] + data["Close"]) / 3
-    data["VWAP"] = (data["Typical_Price"] * data["Volume"]).cumsum() / data["Volume"].cumsum()
+    data["EMA_200"] = data["Close"].ewm(
+        span=200,
+        adjust=False,
+        min_periods=200
+    ).mean()
+    #Calculate VWAP
+    data["Typical_Price"] = (
+        data["High"] + data["Low"] + data["Close"]
+    ) / 3
 
-    data["RSI"] = calculate_rsi(data["Close"])
+    cumulative_volume = (
+        data["Volume"]
+        .fillna(0)
+        .cumsum()
+    )
+    cumulative_price_volume = (
+        data["Typical_Price"]
+        * data["Volume"].fillna(0)
+    ).cumsum()
+
+    data["VWAP"] = (
+        cumulative_price_volume
+        / cumulative_volume.replace(0, float("nan"))
+    )
+    #Calculate RSI
+    data["RSI"] = calculate_rsi(
+        data["Close"]
+    )
+    #Calculate MACD
+    (
+        data["MACD"],
+        data["MACD_Signal"],
+        data["MACD_Histogram"]
+    ) = calculate_macd(
+        data["Close"]
+    )
+    #Calculate Bollinger Bands
+    (
+        data["BB_Middle"],
+        data["BB_Upper"],
+        data["BB_Lower"]
+    ) = calculate_bollinger_bands(
+        data["Close"]
+    )
+    data["BB_Width"] = (
+        (
+            data["BB_Upper"]
+            - data["BB_Lower"]
+        )
+        / data["BB_Middle"].replace(
+            0,
+            float("nan")
+        )
+    ) * 100
+    #Calculate ATR
+    data["ATR"] = calculate_atr(
+        data
+    )
+    #Express ATR as a percentage of the stock price
+    data["ATR_Percent"] = (
+        data["ATR"]
+        / data["Close"].replace(
+            0,
+            float("nan")
+        )
+    ) * 100
+    #Calculate Stochastic Oscillator
+    (
+        data["Stochastic_K"],
+        data["Stochastic_D"]
+    ) = calculate_stochastic(
+        data
+    )
+    #Calculate On-Balance Volume
+    data["OBV"] = calculate_obv(
+        data["Close"],
+        data["Volume"]
+    )
+    #Calculate pivot levels
     pivot_points = calculate_pivot_points(data)
-    indicator_analysis = analyze_indicators(data, pivot_points)
+
+    #Analyze all calculated indicators
+    indicator_analysis = analyze_indicators(data,pivot_points)
 
     #Calculate price values
     starting_price = data["Close"].iloc[0]
@@ -676,13 +1463,24 @@ def news_section():
         st.caption(f"Error: {error}")
 @st.fragment(run_every=run_rate)
 def indicator_section():
+    st.subheader("Indicator Summary")
 
-    st.subheader("Indicator Summary")    
-    if "data" not in st.session_state or st.session_state.data is None:
+    # Stop if stock data has not loaded.
+    if (
+        "data" not in st.session_state
+        or st.session_state.data is None
+    ):
         st.error("Data not found.")
         return
 
-    indicator_analysis = st.session_state.indicator_analysis
+    # Stop if indicator analysis has not been created.
+    if (
+        "indicator_analysis" not in st.session_state
+        or st.session_state.indicator_analysis is None
+    ):
+        st.error("Indicator analysis not found.")
+        return
+
     show_indicator_summary = st.checkbox(
         "Show indicator summary",
         value=False,
@@ -693,30 +1491,51 @@ def indicator_section():
         st.caption("Indicator summary is hidden.")
         return
 
+    indicator_analysis = st.session_state.indicator_analysis
 
-    col1, col2, col3 = st.columns(3)
+    # These names must match the keys in analyze_indicators().
+    summary_indicators = [
+        "Trend",
+        "Momentum",
+        "VWAP",
+        "Pivot",
+        "Volume",
+        "MACD",
+        "Bollinger Bands",
+        "ATR Volatility",
+        "Stochastic",
+        "OBV"
+    ]
 
-    with col1:
-        st.metric("Trend", indicator_analysis["Trend"])
-        st.caption(indicator_analysis["Trend Reason"])
+    # Create three indicator cards per row.
+    for row_start in range(0, len(summary_indicators), 3):
+        columns = st.columns(3)
 
-    with col2:
-        st.metric("Momentum", indicator_analysis["Momentum"])
-        st.caption(indicator_analysis["Momentum Reason"])
+        row_indicators = summary_indicators[
+            row_start:row_start + 3
+        ]
 
-    with col3:
-        st.metric("VWAP", indicator_analysis["VWAP"])
-        st.caption(indicator_analysis["VWAP Reason"])
+        for column, indicator_name in zip(
+            columns,
+            row_indicators
+        ):
+            with column:
+                indicator_value = indicator_analysis.get(
+                    indicator_name,
+                    "Unavailable"
+                )
 
-    col4, col5 = st.columns(2)
+                indicator_reason = indicator_analysis.get(
+                    f"{indicator_name} Reason",
+                    "No explanation is available."
+                )
 
-    with col4:
-        st.metric("Pivot", indicator_analysis["Pivot"])
-        st.caption(indicator_analysis["Pivot Reason"])
+                st.metric(
+                    label=indicator_name,
+                    value=indicator_value
+                )
 
-    with col5:
-        st.metric("Volume", indicator_analysis["Volume"])
-        st.caption(indicator_analysis["Volume Reason"])
+                st.caption(indicator_reason)
 
 @st.fragment(run_every=run_rate)
 def company_section():
@@ -750,7 +1569,7 @@ def comparison_section():
 
     comp_table_input = st.text_input(
         "Enter tickers to compare, separated by commas:",
-        "QBTS, SMCI, MU, INTC, IONQ, QUBT"
+        "QBTS, SMCI, MU, INTC, IONQ, QUBT,QNT"
     )
 
     st.subheader("Ticker Comparison Table")
@@ -799,12 +1618,12 @@ def comparison_section():
 
     st.table(comparison_rows)
 
-    comparison_chart_data = comparison_chart_data[:6]
-    chart_cols = st.columns(3)
+    comparison_chart_data = comparison_chart_data[:12]
+    chart_cols = st.columns(4)
 
     for index, item in enumerate(comparison_chart_data):
         symbol, compare_data, compare_return, compare_current = item
-        chart_column = chart_cols[index % 3]
+        chart_column = chart_cols[index % 4]
 
         with chart_column:
             st.write(f"{symbol}")
@@ -1031,6 +1850,65 @@ def chart_section():
             chart.add_trace(vwap_trace, row=1, col=1)
         else:
             chart.add_trace(vwap_trace)
+    #Adds Bollinger Bands if selected
+    if "Bollinger Bands" in stock_indicators:
+        upper_band_trace = go.Scatter(
+            x=data.index,
+            y=data["BB_Upper"],
+            mode="lines",
+            name="Bollinger Upper",
+            line=dict(dash="dot")
+        )
+
+        middle_band_trace = go.Scatter(
+            x=data.index,
+            y=data["BB_Middle"],
+            mode="lines",
+            name="Bollinger Middle",
+            line=dict(dash="dash")
+        )
+
+        lower_band_trace = go.Scatter(
+            x=data.index,
+            y=data["BB_Lower"],
+            mode="lines",
+            name="Bollinger Lower",
+            line=dict(dash="dot")
+        )
+
+        #Add the bands to the price row when volume bars are displayed
+        if show_volume:
+            chart.add_trace(
+                upper_band_trace,
+                row=1,
+                col=1
+            )
+
+            chart.add_trace(
+                middle_band_trace,
+                row=1,
+                col=1
+            )
+
+            chart.add_trace(
+                lower_band_trace,
+                row=1,
+                col=1
+            )
+
+        #Add the bands to the normal chart when volume is hidden
+        else:
+            chart.add_trace(
+                upper_band_trace
+            )
+
+            chart.add_trace(
+                middle_band_trace
+            )
+
+            chart.add_trace(
+                lower_band_trace
+            )
 
     #Adds pivot point lines if selected
     if "Pivot Points" in stock_indicators and pivot_points is not None:
@@ -1133,7 +2011,347 @@ def chart_section():
         rsi_chart = remove_chart_gaps(rsi_chart)
         st.plotly_chart(rsi_chart, use_container_width=True)
 
+    #Creates MACD chart if selected
+    if "MACD" in stock_indicators:
+
+        #MACD requires enough candles for its signal line.
+        if data["MACD_Signal"].dropna().empty:
+            st.info(
+                "Not enough candles are available to display MACD. "
+                "Choose a longer period or a smaller interval."
+            )
+
+        else:
+            macd_chart = go.Figure()
+
+            #Adds MACD histogram bars
+            macd_chart.add_trace(
+                go.Bar(
+                    x=data.index,
+                    y=data["MACD_Histogram"],
+                    name="MACD Histogram"
+                )
+            )
+
+            #Adds MACD line
+            macd_chart.add_trace(
+                go.Scatter(
+                    x=data.index,
+                    y=data["MACD"],
+                    mode="lines",
+                    name="MACD"
+                )
+            )
+
+            #Adds signal line
+            macd_chart.add_trace(
+                go.Scatter(
+                    x=data.index,
+                    y=data["MACD_Signal"],
+                    mode="lines",
+                    name="Signal Line"
+                )
+            )
+
+            #Adds the zero reference line
+            macd_chart.add_hline(
+                y=0,
+                line_dash="dot",
+                annotation_text="Zero",
+                annotation_position="right"
+            )
+
+            #Labels the MACD chart
+            macd_chart.update_layout(
+                title=f"{ticker.upper()} MACD",
+                xaxis_title="Date / Time",
+                yaxis_title="MACD",
+                height=350
+            )
+
+            #Removes weekends and closed-market gaps
+            macd_chart = remove_chart_gaps(
+                macd_chart
+            )
+
+            #Displays MACD chart
+            st.plotly_chart(
+                macd_chart,
+                use_container_width=True
+            )
+    #Creates ATR chart if selected
+    if "ATR" in stock_indicators:
+
+        #Check whether ATR contains any usable values
+        if data["ATR"].dropna().empty:
+            st.info(
+                "Not enough candles are available to display ATR. "
+                "Choose a longer period or a smaller interval."
+            )
+
+        else:
+            atr_chart = go.Figure()
+
+            #Adds ATR line
+            atr_chart.add_trace(
+                go.Scatter(
+                    x=data.index,
+                    y=data["ATR"],
+                    mode="lines",
+                    name="ATR"
+                )
+            )
+
+            #Calculate the recent average ATR
+            recent_average_atr = (
+                data["ATR"]
+                .dropna()
+                .tail(20)
+                .mean()
+            )
+
+            #Add an average ATR reference line
+            if pd.notna(recent_average_atr):
+                atr_chart.add_hline(
+                    y=recent_average_atr,
+                    line_dash="dot",
+                    annotation_text=(
+                        f"Recent Average: "
+                        f"${recent_average_atr:.3f}"
+                    ),
+                    annotation_position="right"
+                )
+
+            #Labels the ATR chart
+            atr_chart.update_layout(
+                title=f"{ticker.upper()} Average True Range",
+                xaxis_title="Date / Time",
+                yaxis_title="ATR",
+                height=300
+            )
+
+            #Removes weekends and closed-market gaps
+            atr_chart = remove_chart_gaps(
+                atr_chart
+            )
+
+            #Displays ATR chart
+            st.plotly_chart(
+                atr_chart,
+                use_container_width=True
+            )
+
+            #Display the latest ATR values below the chart
+            latest_atr = data["ATR"].iloc[-1]
+            latest_atr_percent = data["ATR_Percent"].iloc[-1]
+
+            if (
+                pd.notna(latest_atr)
+                and pd.notna(latest_atr_percent)
+            ):
+                st.caption(
+                    f"Latest ATR: ${latest_atr:.3f} "
+                    f"({latest_atr_percent:.2f}% of the share price)"
+                )
+    #Creates Stochastic Oscillator chart if selected
+    if "Stochastic" in stock_indicators:
+
+        #Check whether both Stochastic lines contain usable values
+        if (
+            data["Stochastic_K"].dropna().empty
+            or data["Stochastic_D"].dropna().empty
+        ):
+            st.info(
+                "Not enough candles are available to display the "
+                "Stochastic Oscillator. Choose a longer period or "
+                "a smaller interval."
+            )
+
+        else:
+            stochastic_chart = go.Figure()
+
+            #Adds the faster %K line
+            stochastic_chart.add_trace(
+                go.Scatter(
+                    x=data.index,
+                    y=data["Stochastic_K"],
+                    mode="lines",
+                    name="%K"
+                )
+            )
+
+            #Adds the slower %D signal line
+            stochastic_chart.add_trace(
+                go.Scatter(
+                    x=data.index,
+                    y=data["Stochastic_D"],
+                    mode="lines",
+                    name="%D"
+                )
+            )
+
+            #Adds overbought reference line
+            stochastic_chart.add_hline(
+                y=80,
+                line_dash="dot",
+                annotation_text="Overbought 80",
+                annotation_position="right"
+            )
+
+            #Adds oversold reference line
+            stochastic_chart.add_hline(
+                y=20,
+                line_dash="dot",
+                annotation_text="Oversold 20",
+                annotation_position="right"
+            )
+
+            #Adds a neutral middle reference line
+            stochastic_chart.add_hline(
+                y=50,
+                line_dash="dot",
+                annotation_text="Middle 50",
+                annotation_position="right"
+            )
+
+            #Labels the Stochastic chart
+            stochastic_chart.update_layout(
+                title=f"{ticker.upper()} Stochastic Oscillator",
+                xaxis_title="Date / Time",
+                yaxis_title="Stochastic Value",
+                height=325
+            )
+
+            #Keep the chart scale between 0 and 100
+            stochastic_chart.update_yaxes(
+                range=[0, 100]
+            )
+
+            #Removes weekends and closed-market gaps
+            stochastic_chart = remove_chart_gaps(
+                stochastic_chart
+            )
+
+            #Displays the Stochastic chart
+            st.plotly_chart(
+                stochastic_chart,
+                use_container_width=True
+            )
+
+            #Displays the newest values below the chart
+            latest_stochastic_k = data["Stochastic_K"].iloc[-1]
+            latest_stochastic_d = data["Stochastic_D"].iloc[-1]
+
+            if (
+                pd.notna(latest_stochastic_k)
+                and pd.notna(latest_stochastic_d)
+            ):
+                st.caption(
+                    f"Latest values: "
+                    f"%K = {latest_stochastic_k:.1f}, "
+                    f"%D = {latest_stochastic_d:.1f}"
+                )
+    #Creates On-Balance Volume chart if selected
+    if "OBV" in stock_indicators:
+
+        #Check whether OBV contains usable values
+        if data["OBV"].dropna().empty:
+            st.info(
+                "Usable volume data is not available to display OBV."
+            )
+
+        else:
+            obv_chart = go.Figure()
+
+            #Adds the OBV line
+            obv_chart.add_trace(
+                go.Scatter(
+                    x=data.index,
+                    y=data["OBV"],
+                    mode="lines",
+                    name="OBV"
+                )
+            )
+
+            #Calculate a short OBV moving average
+            data["OBV_MA_10"] = (
+                data["OBV"]
+                .rolling(
+                    window=10,
+                    min_periods=10
+                )
+                .mean()
+            )
+
+            #Only add the moving average when enough candles exist
+            if not data["OBV_MA_10"].dropna().empty:
+                obv_chart.add_trace(
+                    go.Scatter(
+                        x=data.index,
+                        y=data["OBV_MA_10"],
+                        mode="lines",
+                        name="OBV 10-Candle Average",
+                        line=dict(dash="dash")
+                    )
+                )
+
+            #Labels the OBV chart
+            obv_chart.update_layout(
+                title=f"{ticker.upper()} On-Balance Volume",
+                xaxis_title="Date / Time",
+                yaxis_title="Cumulative Volume",
+                height=325
+            )
+
+            #Format large OBV numbers with commas
+            obv_chart.update_yaxes(
+                tickformat=","
+            )
+
+            #Removes weekends and closed-market gaps
+            obv_chart = remove_chart_gaps(
+                obv_chart
+            )
+
+            #Displays the OBV chart
+            st.plotly_chart(
+                obv_chart,
+                use_container_width=True
+            )
+
+            #Display recent OBV direction
+            obv_lookback = min(
+                10,
+                len(data) - 1
+            )
+
+            if obv_lookback >= 1:
+                latest_obv = data["OBV"].iloc[-1]
+
+                previous_obv = data["OBV"].iloc[
+                    -(obv_lookback + 1)
+                ]
+
+                obv_change = latest_obv - previous_obv
+
+                if obv_change > 0:
+                    obv_direction = "Rising"
+
+                elif obv_change < 0:
+                    obv_direction = "Falling"
+
+                else:
+                    obv_direction = "Flat"
+
+                st.caption(
+                    f"OBV direction over the last "
+                    f"{obv_lookback} candles: "
+                    f"{obv_direction}"
+                )
+
+
     #END OF MAIN CHART
+
 # GROQ AI TECHNICAL ANALYSIS
 def ai_section():
     st.subheader("AI Analysis:")
