@@ -163,7 +163,9 @@ Week 3 6/7-6/13
        7/23
         -added a dropdown selector for ticker comparison section with options between percentage comparison chart and separate price charts
         -used percentage return code from the benchmark comparison section
-        -git commit 
+        -git commit
+
+        -used AI to generate a beginner guide to stockscholar using expanders
 
 Current Features
     -Basic stock tracking features
@@ -222,6 +224,9 @@ Current Features
 
     AI chatbot assistant that helps users learn investing terms and concepts
         -has suggested questions so users have a better idea of what to ask
+    
+    New user guide that explains everything in the web app such as indicators or features
+        -Located at the top of the web app, intended to better guide users through the features 
 Next Features:
 Improved AI analysis with more context like recent news and sector trends
     like a research assistant that you can feed specific data or ask to find specific data

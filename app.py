@@ -13,6 +13,738 @@ from groq import Groq
 st.set_page_config(page_title="Stock Tracker", layout="wide")
 st.title("stockscholar.streamlit.app")
 st.caption("A beginner-friendly stock dashboard with AI analysis and a AI tutor for investing education.")
+with st.expander("⭐ New to StockScholar? Start Here", expanded=False):
+    st.markdown(
+        """
+        ## Welcome to StockScholar
+
+        StockScholar helps you research stocks, compare companies, understand
+        technical indicators, and learn investing concepts.
+
+        Beginners should follow the workflow below instead of trying to use
+        every feature at once.
+        """
+    )
+
+    st.markdown("### Recommended Beginner Workflow")
+
+    st.markdown(
+        """
+        1. Search for a stock.
+        2. Review the main chart and price performance.
+        3. Learn what the company does.
+        4. Check recent news.
+        5. Review the indicator summary.
+        6. Compare the stock against the market.
+        7. Compare it with other companies.
+        8. Read the AI analysis.
+        9. Ask the Investing Tutor about anything you do not understand.
+        """
+    )
+
+    with st.expander("1️⃣ Dashboard Settings", expanded=False):
+        st.write(
+            """
+            Use Dashboard Settings to choose the stock you want to research
+            and control how its market data is displayed.
+            """
+        )
+
+        with st.expander("Stock Ticker", expanded=False):
+            st.write(
+                """
+                Enter a valid stock ticker to load that company's data.
+
+                Examples:
+
+                - AAPL — Apple
+                - MSFT — Microsoft
+                - NVDA — Nvidia
+                - TSLA — Tesla
+                """
+            )
+
+        with st.expander("Time Period", expanded=False):
+            st.write(
+                """
+                The time period controls how far back the chart looks.
+
+                - 1 day: intraday price movement
+                - 1 month: short-term movement
+                - 3 months: balanced view for beginners
+                - 1 year: longer-term trend
+                - 5 years: long-term performance
+
+                A 3-month or 1-year period is usually a good starting point.
+                """
+            )
+
+        with st.expander("Custom Date Range", expanded=False):
+            st.write(
+                """
+                Custom Date Range lets you choose exact starting and ending dates.
+
+                This can be useful when studying:
+
+                - an earnings report,
+                - a major news event,
+                - a market crash,
+                - a specific investment period.
+                """
+            )
+
+        with st.expander("Chart Type", expanded=False):
+            st.write(
+                """
+                **Candlestick Chart**
+
+                Shows the open, high, low, and closing price for each period.
+
+                **Line Chart**
+
+                Shows closing prices in a simpler format.
+
+                Beginners may find the line chart easier to read at first.
+                """
+            )
+
+        with st.expander("Time Interval", expanded=False):
+            st.write(
+                """
+                The interval controls how much time each candle or point represents.
+
+                Examples:
+
+                - 5-minute interval: each candle represents 5 minutes
+                - 1-hour interval: each candle represents 1 hour
+                - 1-day interval: each candle represents 1 trading day
+
+                Smaller intervals show more detail but also more short-term noise.
+                """
+            )
+
+        with st.expander("Technical Indicators", expanded=False):
+            st.write(
+                """
+                Technical indicators help summarize trend, momentum, volatility,
+                and trading volume.
+
+                Beginners can leave the default indicators selected.
+
+                Using too many indicators at once can make the chart difficult
+                to understand.
+                """
+            )
+
+        with st.expander("Extended Hours", expanded=False):
+            st.write(
+                """
+                Extended Hours includes eligible pre-market and after-hours trading.
+
+                Extended-hours trading can have:
+
+                - lower trading volume,
+                - larger price swings,
+                - wider bid-ask spreads.
+
+                Beginners usually do not need this enabled.
+                """
+            )
+
+        with st.expander("Auto Refresh", expanded=False):
+            st.write(
+                """
+                Auto Refresh repeatedly updates the dashboard with newer market data.
+
+                This is most useful during market hours.
+
+                It is usually unnecessary when researching long-term performance.
+                """
+            )
+
+    with st.expander("2️⃣ Main Stock Chart", expanded=False):
+        st.write(
+            """
+            The main stock chart shows how the selected stock moved during the
+            chosen period.
+            """
+        )
+
+        with st.expander("What to Look For", expanded=False):
+            st.write(
+                """
+                Look for:
+
+                - the overall direction of the price,
+                - recent highs and lows,
+                - sudden price movements,
+                - periods of high volatility,
+                - whether volume supports a price move,
+                - whether indicators agree or conflict.
+                """
+            )
+
+        with st.expander("Price Trend", expanded=False):
+            st.write(
+                """
+                An upward trend means the stock has generally made higher prices.
+
+                A downward trend means the stock has generally made lower prices.
+
+                A sideways trend means the price has remained within a relatively
+                limited range.
+                """
+            )
+
+        with st.expander("Period Return", expanded=False):
+            st.write(
+                """
+                Period Return shows the percentage change from the beginning of
+                the selected period to the latest available price.
+
+                Example:
+
+                If a stock began at $100 and ended at $110, its period return
+                would be 10%.
+                """
+            )
+
+        with st.expander("Period High and Low", expanded=False):
+            st.write(
+                """
+                The period high is the highest price reached during the selected
+                time range.
+
+                The period low is the lowest price reached during the selected
+                time range.
+
+                The range bar shows where the current price sits between those
+                two values.
+                """
+            )
+
+    with st.expander("3️⃣ Indicator Summary", expanded=False):
+        st.write(
+            """
+            The Indicator Summary converts technical indicator values into
+            beginner-friendly explanations.
+
+            Indicators are supporting evidence. They do not predict the future
+            with certainty.
+            """
+        )
+
+        with st.expander("Trend and EMAs", expanded=False):
+            st.write(
+                """
+                Exponential Moving Averages, or EMAs, smooth price data to help
+                identify trends.
+
+                - EMA 20: shorter-term trend
+                - EMA 50: medium-term trend
+                - EMA 200: longer-term trend
+
+                Price above the main EMAs can suggest bullish strength.
+
+                Price below the main EMAs can suggest bearish weakness.
+                """
+            )
+
+        with st.expander("RSI Momentum", expanded=False):
+            st.write(
+                """
+                RSI measures recent price momentum on a scale from 0 to 100.
+
+                - Above 70: commonly considered overbought
+                - Below 30: commonly considered oversold
+                - Around 50: more neutral
+
+                Overbought does not automatically mean the stock will fall.
+
+                Oversold does not automatically mean the stock will rise.
+                """
+            )
+
+        with st.expander("VWAP", expanded=False):
+            st.write(
+                """
+                VWAP is the average price of the stock weighted by trading volume.
+
+                Price above VWAP can suggest buyers currently have more control.
+
+                Price below VWAP can suggest sellers currently have more control.
+                """
+            )
+
+        with st.expander("MACD", expanded=False):
+            st.write(
+                """
+                MACD compares shorter and longer moving averages to measure trend
+                and momentum.
+
+                A MACD line above its signal line is generally bullish.
+
+                A MACD line below its signal line is generally bearish.
+                """
+            )
+
+        with st.expander("Bollinger Bands", expanded=False):
+            st.write(
+                """
+                Bollinger Bands show price movement around a moving average.
+
+                Wide bands suggest higher volatility.
+
+                Narrow bands suggest lower volatility.
+
+                Price touching a band does not guarantee a reversal.
+                """
+            )
+
+        with st.expander("ATR Volatility", expanded=False):
+            st.write(
+                """
+                Average True Range measures the typical size of recent price moves.
+
+                Higher ATR means the stock is moving more aggressively.
+
+                ATR measures volatility, not bullish or bearish direction.
+                """
+            )
+
+        with st.expander("Stochastic Oscillator", expanded=False):
+            st.write(
+                """
+                The Stochastic Oscillator compares the latest closing price with
+                the stock's recent trading range.
+
+                Values above 80 are often considered overbought.
+
+                Values below 20 are often considered oversold.
+                """
+            )
+
+        with st.expander("Volume and OBV", expanded=False):
+            st.write(
+                """
+                Volume measures how many shares are being traded.
+
+                Large price movements with strong volume are often considered more
+                meaningful.
+
+                On-Balance Volume, or OBV, tracks whether volume appears to support
+                or weaken the price trend.
+                """
+            )
+
+        with st.expander("Pivot Points", expanded=False):
+            st.write(
+                """
+                Pivot points estimate possible support and resistance levels using
+                previous price data.
+
+                Support is an area where buyers may become more active.
+
+                Resistance is an area where sellers may become more active.
+                """
+            )
+
+    with st.expander("4️⃣ Company Profile", expanded=False):
+        st.write(
+            """
+            The Company Profile helps you understand the actual business behind
+            the ticker.
+            """
+        )
+
+        with st.expander("What the Company Does", expanded=False):
+            st.write(
+                """
+                Read the business summary to learn:
+
+                - what the company sells,
+                - which customers it serves,
+                - where it operates,
+                - how it attempts to make money.
+                """
+            )
+
+        with st.expander("Market Capitalization", expanded=False):
+            st.write(
+                """
+                Market capitalization estimates the total stock-market value of
+                the company.
+
+                It is calculated as:
+
+                Share price × shares outstanding
+
+                Market cap measures company size, not whether the stock is cheap
+                or expensive.
+                """
+            )
+
+        with st.expander("P/E Ratio", expanded=False):
+            st.write(
+                """
+                The Price-to-Earnings ratio compares the stock price with the
+                company's earnings.
+
+                A high P/E may reflect strong growth expectations.
+
+                It may also mean the stock is priced aggressively.
+
+                P/E ratios should normally be compared with similar companies.
+                """
+            )
+
+        with st.expander("EPS", expanded=False):
+            st.write(
+                """
+                Earnings Per Share shows how much company profit is assigned to
+                each outstanding share.
+
+                Positive and growing EPS can indicate improving profitability.
+
+                Negative EPS means the company is currently reporting a loss.
+                """
+            )
+
+        with st.expander("Revenue and Profitability", expanded=False):
+            st.write(
+                """
+                Revenue is the money the company earns from selling its products
+                or services.
+
+                Profit measures what remains after expenses.
+
+                A company can have growing revenue while still losing money.
+                """
+            )
+
+        with st.expander("Cash and Debt", expanded=False):
+            st.write(
+                """
+                Cash helps a company pay expenses, invest, and survive difficult
+                periods.
+
+                Debt represents money the company owes.
+
+                Debt is not automatically bad, but excessive debt can increase risk.
+                """
+            )
+
+        with st.expander("Beta", expanded=False):
+            st.write(
+                """
+                Beta estimates how strongly a stock has moved compared with the
+                overall market.
+
+                - Beta above 1: historically more volatile than the market
+                - Beta below 1: historically less volatile than the market
+
+                Beta is based on past movement and can change.
+                """
+            )
+
+        with st.expander("52-Week Range", expanded=False):
+            st.write(
+                """
+                The 52-week high and low show the highest and lowest prices reached
+                over approximately the last year.
+
+                A stock near its high is not automatically overvalued.
+
+                A stock near its low is not automatically undervalued.
+                """
+            )
+
+    with st.expander("5️⃣ Recent News", expanded=False):
+        st.write(
+            """
+            News may help explain recent price movements or changes in investor
+            expectations.
+            """
+        )
+
+        with st.expander("Important Types of News", expanded=False):
+            st.write(
+                """
+                Important events may include:
+
+                - earnings reports,
+                - revenue or profit guidance,
+                - new products,
+                - partnerships,
+                - acquisitions,
+                - government regulation,
+                - lawsuits,
+                - executive changes,
+                - analyst upgrades or downgrades.
+                """
+            )
+
+        with st.expander("How to Read Stock News", expanded=False):
+            st.write(
+                """
+                Do not judge an article using only its headline.
+
+                Ask:
+
+                - Is this information new?
+                - Is the source reliable?
+                - Does it affect revenue, costs, growth, or risk?
+                - Is the effect temporary or long term?
+                - Was the news already expected by investors?
+                """
+            )
+
+    with st.expander("6️⃣ Benchmark Comparison", expanded=False):
+        st.write(
+            """
+            Benchmark Comparison shows whether the selected stock performed better
+            or worse than a broader market index.
+            """
+        )
+
+        with st.expander("Why Benchmarks Matter", expanded=False):
+            st.write(
+                """
+                A positive stock return does not always mean strong performance.
+
+                Example:
+
+                - Your stock gained 6%.
+                - The S&P 500 gained 12%.
+
+                The stock increased, but it still underperformed the broader market.
+                """
+            )
+
+        with st.expander("Available Benchmarks", expanded=False):
+            st.write(
+                """
+                **S&P 500**
+
+                Represents many large US companies.
+
+                **Nasdaq Composite**
+
+                Includes many technology and growth companies.
+
+                **Dow Jones**
+
+                Tracks 30 large established US companies.
+
+                **Russell 2000**
+
+                Represents smaller publicly traded US companies.
+                """
+            )
+
+        with st.expander("How to Read the Chart", expanded=False):
+            st.write(
+                """
+                Both lines begin at 0%.
+
+                The higher line has produced the stronger percentage return during
+                the selected period.
+
+                This measures past performance, not future potential.
+                """
+            )
+
+    with st.expander("7️⃣ Ticker Comparison", expanded=False):
+        st.write(
+            """
+            Ticker Comparison lets you compare several stocks using the same
+            selected time period.
+            """
+        )
+
+        with st.expander("Comparison Table", expanded=False):
+            st.write(
+                """
+                The comparison table shows:
+
+                - latest price,
+                - period return,
+                - period low,
+                - period high.
+
+                This provides a quick summary before viewing the charts.
+                """
+            )
+
+        with st.expander("Percentage Return Based Chart", expanded=False):
+            st.write(
+                """
+                Every stock begins at 0%.
+
+                This is the fairest way to compare performance because stocks may
+                have very different starting prices.
+
+                The highest line has produced the strongest return during the
+                selected period.
+                """
+            )
+
+        with st.expander("Separate Price Charts", expanded=False):
+            st.write(
+                """
+                Separate charts show each stock's actual share-price movement.
+
+                These are useful for studying individual trends.
+
+                Do not directly compare the height or steepness of different charts,
+                because each chart may use a different price scale.
+                """
+            )
+
+        with st.expander("Choosing Comparison Tickers", expanded=False):
+            st.write(
+                """
+                Useful comparisons usually involve similar companies.
+
+                Examples:
+
+                - companies in the same industry,
+                - direct competitors,
+                - companies with similar sizes,
+                - companies affected by the same economic trends.
+                """
+            )
+
+    with st.expander("8️⃣ AI Technical Analysis", expanded=False):
+        st.write(
+            """
+            AI Technical Analysis combines the indicator results and explains them
+            in clearer language.
+            """
+        )
+
+        with st.expander("What the AI Reviews", expanded=False):
+            st.write(
+                """
+                The AI may review:
+
+                - trend,
+                - momentum,
+                - volume,
+                - volatility,
+                - bullish evidence,
+                - bearish evidence,
+                - conflicting signals,
+                - important levels to watch.
+                """
+            )
+
+        with st.expander("How to Use the Response", expanded=False):
+            st.write(
+                """
+                Use the AI response as an explanation of the dashboard data.
+
+                Check whether the AI's statements match the indicator values shown
+                elsewhere on the page.
+
+                Do not treat the response as a guaranteed prediction.
+                """
+            )
+
+        with st.expander("What the AI Does Not Do", expanded=False):
+            st.write(
+                """
+                The AI does not provide direct buy, sell, or hold recommendations.
+
+                It also should not invent missing news, company information, or
+                technical data.
+                """
+            )
+
+    with st.expander("9️⃣ AI Company Analysis", expanded=False):
+        st.write(
+            """
+            AI Company Analysis summarizes company information and financial data
+            in beginner-friendly language.
+            """
+        )
+
+        with st.expander("What the AI Reviews", expanded=False):
+            st.write(
+                """
+                The AI may explain:
+
+                - what the company does,
+                - its industry,
+                - valuation,
+                - revenue growth,
+                - profitability,
+                - cash and debt,
+                - risk factors,
+                - useful comparison benchmarks.
+                """
+            )
+
+        with st.expander("Important Limitation", expanded=False):
+            st.write(
+                """
+                Company data may occasionally be missing, delayed, or incomplete.
+
+                Always check the actual displayed values and do not rely only on the
+                AI summary.
+                """
+            )
+
+    with st.expander("🔟 Investing Tutor", expanded=False):
+        st.write(
+            """
+            The Investing Tutor explains investing and stock-market concepts in
+            plain language.
+            """
+        )
+
+        with st.expander("Example Questions", expanded=False):
+            st.write(
+                """
+                Try questions such as:
+
+                - What is a P/E ratio?
+                - What does market cap mean?
+                - Why does volume matter?
+                - What is the difference between revenue and profit?
+                - What does RSI measure?
+                - What is a benchmark?
+                - Why can a stock fall after good earnings?
+                """
+            )
+
+        with st.expander("Best Way to Use the Tutor", expanded=False):
+            st.write(
+                """
+                Ask about any term you see elsewhere on the dashboard.
+
+                You can also ask the tutor to:
+
+                - simplify an explanation,
+                - provide an example,
+                - compare two investing concepts,
+                - explain why a metric matters.
+                """
+            )
+
+    st.divider()
+
+    st.markdown("### Important Reminder")
+
+    st.info(
+        """
+        StockScholar is an educational research tool.
+
+        Charts, indicators, company data, news, and AI responses can all be
+        incomplete or incorrect. None of the information shown should be treated
+        as guaranteed financial advice or a guaranteed prediction of future results.
+        """
+    )
 with st.expander("Dashboard Settings ⭐", expanded=False):
     st.write("Search for stock tickers:")
     ticker = st.text_input("Enter a stock ticker:", "QBTS")
