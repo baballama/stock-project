@@ -1566,6 +1566,10 @@ def comparison_section():
     if not show_comparison:
         st.caption("Ticker comparison is hidden.")
         return
+    compare_setting = st.selectbox(
+        "Chart Setting",
+        ["Percentage Return Based Chart", "Separate Price Charts"]
+    )
 
     comp_table_input = st.text_input(
         "Enter tickers to compare, separated by commas:",
@@ -1620,36 +1624,58 @@ def comparison_section():
 
     comparison_chart_data = comparison_chart_data[:12]
     chart_cols = st.columns(4)
+    if compare_setting == "Percentage Return Based Chart":
 
-    for index, item in enumerate(comparison_chart_data):
-        symbol, compare_data, compare_return, compare_current = item
-        chart_column = chart_cols[index % 4]
-
-        with chart_column:
-            st.write(f"{symbol}")
-
-            st.metric(
-                label="Latest Price",
-                value=f"${compare_current:.2f}",
-                delta=f"{compare_return:.2f}%"
+        mini_chart = go.Figure()
+        for index, item in enumerate(comparison_chart_data):
+            symbol, compare_data, compare_return, compare_current = item
+            compare_percent = ((compare_data["Close"] - compare_data["Close"].iloc[0]) / compare_data["Close"].iloc[0]) * 100
+            mini_chart.add_trace(
+                go.Scatter(
+                    x=compare_data.index,
+                    y=compare_percent,
+                    mode="lines",
+                    name=symbol
+                )
             )
+            # mini_chart.update_layout(
+            #     title=f"{symbol} Percent Return",
+            #     xaxis_title="Date / Time",
+            #     yaxis_title="Percent Return"
+            # )
+        mini_chart = remove_chart_gaps(mini_chart)
+        st.plotly_chart(mini_chart, use_container_width=True)
 
-            mini_chart = px.line(
-                compare_data,
-                x=compare_data.index,
-                y="Close",
-                title=f"{symbol} Price Chart"
-            )
+    else:
+        for index, item in enumerate(comparison_chart_data):
+            symbol, compare_data, compare_return, compare_current = item
+            chart_column = chart_cols[index % 4]
 
-            mini_chart.update_layout(
-                height=250,
-                margin=dict(l=10, r=10, t=40, b=10),
-                showlegend=False,
-                xaxis_title="",
-                yaxis_title=""
-            )
-            mini_chart = remove_chart_gaps(mini_chart)
-            st.plotly_chart(mini_chart, use_container_width=True)
+            with chart_column:
+                st.write(f"{symbol}")
+
+                st.metric(
+                    label="Latest Price",
+                    value=f"${compare_current:.2f}",
+                    delta=f"{compare_return:.2f}%"
+                )
+
+                mini_chart = px.line(
+                    compare_data,
+                    x=compare_data.index,
+                    y="Close",
+                    title=f"{symbol} Price Chart"
+                )
+
+                mini_chart.update_layout(
+                    height=250,
+                    margin=dict(l=10, r=10, t=40, b=10),
+                    showlegend=False,
+                    xaxis_title="",
+                    yaxis_title=""
+                )
+                mini_chart = remove_chart_gaps(mini_chart)
+                st.plotly_chart(mini_chart, use_container_width=True)
 
 @st.fragment(run_every=run_rate)
 def benchmark_section():

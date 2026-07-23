@@ -155,6 +155,15 @@ Week 3 6/7-6/13
         -fixed an issue where opening the website automatically scrolls to the investing tutor chatbot
         -organized the web app by compressing different sections together with expanders
         -added some design to the web app using emojis to make it less confusing
+    -7/17-7/19
+        -added 5 new stock indicators, Bollinger Bands, MACD, ATR, Stochastic, OBV
+            updated the stock indicator AI analysis and the indicator summary
+        
+    Week 9 7/19-7/25
+       7/23
+        -added a dropdown selector for ticker comparison section with options between percentage comparison chart and separate price charts
+        -used percentage return code from the benchmark comparison section
+        -git commit 
 
 Current Features
     -Basic stock tracking features
@@ -178,6 +187,8 @@ Current Features
     -Multiple ticker comparison
         -Input tickers separated by commas which are then displayed in a table with the latest price, period return, period low and high
         -Mini charts under the table that display price over time of selected tickers from the table
+        -Alternative option to have one chart with multiple tickers percentage return displayed based on the selected period 
+
 
     -Recent News
         -shows most 5 most recent news articles with their titles and summaries
@@ -186,10 +197,10 @@ Current Features
 
     -Stock indicators
         -select which indicators you want to show on the chart
-        -current options: "EMA 20", "EMA 50", "EMA 200", "VWAP", "RSI", "Pivot Points", "Volume Bars",
+        -current options: "EMA 20", "EMA 50", "EMA 200", "VWAP", "RSI", "Pivot Points", "Volume Bars", "Bollinger Bands", "ATR", "MACD", "Stochastic", "OBV"
 
     Indicator explanation feature
-        -uses calculated EMA, VWAP, RSI, Pivot Points, and Volume values to create a simple technical summary
+        -uses calculated indicator values to create a simple technical summary
         -shows trend, momentum, VWAP position, pivot position, and volume confirmation
 
     -Local Ollama AI analysis (REPLACED WITH GROQ)
@@ -213,8 +224,9 @@ Current Features
         -has suggested questions so users have a better idea of what to ask
 Next Features:
 Improved AI analysis with more context like recent news and sector trends
-Add more stock indicators
-Make comparison charts one chart with multiple lines
+    like a research assistant that you can feed specific data or ask to find specific data
+
+
 Add beginner friendly explanations through the web app
 AI analysis of recent news articles combined with indicator summary
 Portfolio tracker
