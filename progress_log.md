@@ -167,6 +167,13 @@ Week 3 6/7-6/13
 
         -used AI to generate a beginner guide to stockscholar using expanders
 
+    After School:
+
+        8/11-
+        added a market scout to track day gainers,losers and upcoming earnings
+            added the frame with tabs for each part 
+        added upcoming earnings feature
+            starts at 10 closest earning dates then has option to add ten more repeatedly
 Current Features
     -Basic stock tracking features
         -Ticker input, Time period selector, Time between prices selector

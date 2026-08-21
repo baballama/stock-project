@@ -756,7 +756,7 @@ with st.expander("Dashboard Settings ⭐", expanded=False):
     period = st.selectbox(    
         "Choose a time period:",
         ["1d", "5d", "1mo", "3mo", "6mo", "1y", "5y"],
-        index=3
+        index=0
         
     )
     if date_mode == "Custom Date Range":
@@ -3232,6 +3232,101 @@ def investing_chatbot_section():
             st.session_state.investing_chat_messages = []
             st.rerun()
 
+
+def daily_scout_section():
+    st.subheader("Daily Market Scout")
+    st.write(
+        "Discover stocks making large moves today and see upcoming earnings."
+    )
+    scout_period = st.selectbox(
+        "Scout time span:",
+        ["1d", "5d", "1mo","3mo", "6mo", "1y", "2y", "5y"],
+        index=0
+    )
+    scout_tab = st.tabs(
+        ["Top Gainers", "Top Losers", "Upcoming Earnings"]
+    )
+
+    with scout_tab[0]:
+        st.write("Top gainers:")
+
+    with scout_tab[1]:
+        st.write("Top losers:")
+
+    with scout_tab[2]:
+        st.write("Upcoming earnings:")
+        if "earnings_limit" not in st.session_state:
+            st.session_state.earnings_limit = 10
+
+        try:
+            calendar = yf.Calendars()
+
+            earnings_data = calendar.get_earnings_calendar(
+                limit=st.session_state.earnings_limit
+            )
+
+            if earnings_data is None or earnings_data.empty:
+                st.write("No upcoming earnings found.")
+
+            else:
+                #Put closest upcoming earnings first
+                earnings_data = earnings_data.sort_index(
+                    ascending=True
+                )
+
+                #Turn the earnings index into a normal datetime column
+                earnings_data = earnings_data.reset_index()
+
+                earnings_date_column = earnings_data.columns[0]
+
+                earnings_data[earnings_date_column] = pd.to_datetime(
+                earnings_data[earnings_date_column],
+                errors="coerce"
+)
+
+                #Format date as "Aug 12"
+                earnings_data["Date"] = earnings_data[
+                    earnings_date_column
+                ].dt.strftime("%b %d")
+
+                #Determine whether earnings are before or after market
+                def get_earnings_timing(earnings_datetime):
+                    earnings_time = earnings_datetime.time()
+
+                    if earnings_time.hour < 9 or (
+                        earnings_time.hour == 9
+                        and earnings_time.minute < 30
+                    ):
+                        return "Pre-Market"
+
+                    elif earnings_time.hour >= 16:
+                        return "After Market"
+
+                    else:
+                        return "During Market"
+
+                earnings_data["Timing"] = earnings_data[
+                    earnings_date_column
+                ].apply(get_earnings_timing)
+
+                #Remove the ugly full datetime column
+                earnings_data = earnings_data.drop(
+                    columns=[earnings_date_column]
+                )
+
+                st.dataframe(
+                    earnings_data,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+                if st.button("Load 10 More Earnings"):
+                    st.session_state.earnings_limit += 10
+                    st.rerun()
+
+        except Exception as error:
+            st.warning("Upcoming earnings could not be loaded.")
+            st.caption(f"Error: {error}")
 data_section()
 chart_section()
 st.divider()
@@ -3244,6 +3339,8 @@ with st.expander(f"{ticker.upper()} Company and Indicator Info Analysis"):
     ai_section()
     st.divider()
     company_section()
+st.divider()
+daily_scout_section()
 st.divider()
 comparison_section()
 st.divider()
